@@ -1,6 +1,7 @@
 import re
 from collections import defaultdict
 from dataclasses import dataclass
+from idlelib.pyparse import trans
 
 import ete3
 
@@ -10,9 +11,6 @@ def read_transmission_nexus(file: str, _ignore_ctrees=False) -> list:
     re_tree = re.compile("\t?tree .*=? (.*$)", flags=re.I | re.MULTILINE)
     # Used to delete the ; and a potential branchlength of the root
     # name_dict = get_mapping_dict(file)  # Save tree label names in dict
-
-    # todo this will be changed once we are interested in the branch annotation information
-    brackets = re.compile(r'\[[^\]]*\]')  # Used to delete info in []
 
     trees = []
     with open(file, 'r') as f:
@@ -64,7 +62,7 @@ class transmission_clade:
 
 
 def get_transmission_clades(tree, blockcountmap):
-    treestr = tree.write(format=8)  # todo this ignores the internal node names, which is wrong
+    treestr = tree.write(format=8)
     clades = set()
     if not (treestr[0] == '(' and treestr[-2] == ')' and treestr[-1] == ';'):
         # todo the above second statement is not true since there might be root info that we can ignore
@@ -115,9 +113,9 @@ def get_transmission_clades(tree, blockcountmap):
             else:
                 curclade = transmission_clade(current_clade_set, True)
                 if curclade in blockcountmap:
-                    blockcountmap[curclade] += blockcount
+                    blockcountmap[curclade].append(blockcount)
                 else:
-                    blockcountmap[curclade] = blockcount
+                    blockcountmap[curclade] = [blockcount]
             clades.add(curclade)
             del opend[-1]
     if opend:
@@ -129,33 +127,54 @@ def get_transmission_maps(trees):
 
     m1 = defaultdict(int)  # map for each clade how often it got sampled
     m2 = defaultdict(int)  # map for each (c1,c2) clade how often this specific relation got sampled
-    uniques = {}
-
-    seen = {}
-    # todo m1 needs to have the root and the single leaf clades
-    #  need to get a list of weights for the unique trees
-    #  this needs to replace trees in the for loop and the weight will be added instead of 1 each time!
+    blockcount_map = {}
 
     for ix, t in enumerate(trees):
-        if not frozenset(sorted(get_transmission_clades(t))) in seen:
-            seen[frozenset(sorted(get_transmission_clades(t)))] = ix
-            uniques[ix] = []
-        else:
-            uniques[seen[frozenset(sorted(get_transmission_clades(t)))]].append(ix)
-
         for node in t.traverse("levelorder"):
-            if len(node) > 2:
+            # todo this if should be > 1 since we also care about leafs now.
+            if len(node) > 1:
                 c = node.children
                 c0_leafs = set()
                 for leaf in c[0]:
-                    c0_leafs.add(int(leaf.name))
+                    c0_leafs.add(int(leaf.name.replace("%", "").split("/")[0]))
                 c1_leafs = set()
                 for leaf in c[1]:
-                    c1_leafs.add(int(leaf.name))
-                parent_clade = frozenset(sorted(c0_leafs.union(c1_leafs)))
-                m1[parent_clade] += 1
-                if min(c0_leafs) < min(c1_leafs):
-                    m2[(parent_clade, frozenset(c0_leafs))] += 1
+                    c1_leafs.add(int(leaf.name.replace("%", "").split("/")[0]))
+
+                parent_clade_set = frozenset(sorted(c0_leafs.union(c1_leafs)))
+                if node.name:
+                    blockcount = int(node.name.replace("%", "").split("/")[1])
+                    if blockcount == -1:
+                        parent_clade = transmission_clade(parent_clade_set, False)
+                    else:
+                        parent_clade = transmission_clade(parent_clade_set, True)
+                        if parent_clade in blockcount_map:
+                            blockcount_map[parent_clade].append(blockcount)
+                        else:
+                            blockcount_map[parent_clade] = [blockcount]
                 else:
-                    m2[(parent_clade, frozenset(c1_leafs))] += 1
-    return m1, m2, uniques
+                    # this is the root, apprarently we don't have the name atm
+                    parent_clade = transmission_clade(parent_clade_set, False)
+
+                m1[parent_clade] += 1
+
+                blockcount_c0 = int(c[0].name.replace("%", "").split("/")[1])
+                blockcount_c1 = int(c[1].name.replace("%", "").split("/")[1])
+                child0_clade = transmission_clade(frozenset(c0_leafs), blockcount_c0 != -1)
+                child1_clade = transmission_clade(frozenset(c1_leafs), blockcount_c1 != -1)
+
+                # in m2 the split clade with the lower int for taxa is entered first
+                if min(c0_leafs) < min(c1_leafs):
+                    m2[(parent_clade, child0_clade, child1_clade)] += 1
+                else:
+                    m2[(parent_clade, child1_clade, child0_clade)] += 1
+            elif len(node) == 1:
+                # leaf node for which we need to add the blockcount to the blockcount_map
+                leaf_label, blockcount = map(int, node.name.replace("%", "").split("/"))
+                if blockcount != -1:
+                    leaf_clade = transmission_clade(frozenset({leaf_label}), True)
+                    if leaf_clade in blockcount_map:
+                        blockcount_map[leaf_clade].append(blockcount)
+                    else:
+                        blockcount_map[leaf_clade] = [blockcount]
+    return m1, m2, blockcount_map
