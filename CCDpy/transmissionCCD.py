@@ -59,6 +59,18 @@ class transmission_clade:
     clade: frozenset
     has_block: bool
     # blockcount: int  # not sure if I want this in here or not...
+    def __len__(self):
+        return len(self.clade)
+
+    def __lt__(self, other):
+        if isinstance(other, transmission_clade):
+            return len(self.clade) < len(other.clade)
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, transmission_clade):
+            return len(self.clade) > len(other.clade)
+        return NotImplemented
 
 
 def get_transmission_clades(tree, blockcountmap):
@@ -178,3 +190,76 @@ def get_transmission_maps(trees):
                     else:
                         blockcount_map[leaf_clade] = [blockcount]
     return m1, m2, blockcount_map
+
+
+def get_transmission_ccd_tree_bottom_up(m1, m2):
+
+    seen_resolved_clades = {}
+    all_clades = sorted(list(m1.keys()), key=len)  # sorted list of all clades, small (cherries) to big
+
+    for current_clade in all_clades:
+        # the following are all triplets that represent how the current clade splits
+        all_splits_current = [i for i in m2 if i[0] == current_clade]
+
+        for current_split in all_splits_current:
+            child1, child2 = current_split[1], current_split[2]
+            # c1_prob = 0
+            # c2_prob = 0
+
+            if len(child1) == 1:
+                # it is a leaf, hence probability is 1
+                c1_prob = 1
+            else:
+                if child1 in seen_resolved_clades:  # todo this won't work
+                    c1_prob = seen_resolved_clades[child1][0]
+                else:
+                    raise ValueError("Should never get here?!")
+
+            if len(child2) == 1:
+                # it is a leaf, hence probability is 1
+                c2_prob = 1
+            else:
+                if child2 in seen_resolved_clades:
+                    c2_prob = seen_resolved_clades[child2][0]
+                else:
+                    raise ValueError("Should never get here?!")
+
+            cur_prob = m2[current_split] / m1[current_split[0]]
+            split_prob = c1_prob * c2_prob * cur_prob
+
+            if current_split[0] in seen_resolved_clades:
+                # todo the following is not randomly resolving tie breaks, just keeps the first found
+                if seen_resolved_clades[current_split[0]][0] <= split_prob:
+                    seen_resolved_clades[current_split[0]] = (split_prob, current_split)
+            else:
+                seen_resolved_clades[current_split[0]] = (split_prob, current_split)
+
+    root_clade = max(seen_resolved_clades.keys())
+    working_list = [root_clade]
+    output = {}
+
+    while working_list:
+        cur_parent = working_list.pop()
+        # output.append(seen_resolved_clades[cur_parent][1])
+        cur_split = seen_resolved_clades[cur_parent][1]
+        output[cur_parent] = (cur_split[1], cur_split[2])
+        if len(cur_split[1]) > 1:
+            working_list.append(cur_split[1])
+        if len(cur_split[2]) > 1:
+            working_list.append(cur_split[2])
+
+    def recursive_nwk_split_dict(clade):
+        nonlocal output
+        if len(clade) == 1:
+            return f"{next(iter(clade.clade))}[&blockcount:CCD={10 if clade.has_block else -2}]:1.0"
+        else:
+            return (f"({recursive_nwk_split_dict(output[clade][0])}, "
+                    f"{recursive_nwk_split_dict(output[clade][1])})"
+                    f"[&blockcount:CCD={10 if clade.has_block else -2}]:1.0")
+
+    test = recursive_nwk_split_dict(root_clade)
+    # todo currently only the newick string for the tree, for figtree this needs to be put in a nexus file to work with the [] information
+    return test
+
+
+
