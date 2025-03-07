@@ -5,7 +5,8 @@ from pathlib import Path
 def test_read_transmission_nexus():
     test_tree_file = f"{Path(__file__).parent.absolute()}/data/BREATH5taxa.trees"
     trees = read_transmission_nexus(test_tree_file)
-    test = get_transmission_clades(trees[0])
+    blockcountmap = {}
+    test = get_transmission_clades(trees[1], blockcountmap)
     assert False
 
 
