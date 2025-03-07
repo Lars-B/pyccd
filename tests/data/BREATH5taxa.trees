@@ -1,0 +1,24 @@
+#NEXUS
+
+Begin taxa;
+	Dimensions ntax=5;
+		Taxlabels
+			A
+			B
+			C
+			D
+			E
+			;
+End;
+Begin trees;
+	Translate
+		   1 A,
+		   2 B,
+		   3 C,
+		   4 D,
+		   5 E,
+;
+
+tree noblocks = ((4[&blockcount.t:bla=-1.0]:1.0,5[&blockcount.t:bla=-1.0]:1.0)[&blockcount.t:bla=-1.0]:1.0,(3[&blockcount.t:bla=-1.0]:1.0,(1[&blockcount.t:bla=-1.0]:1.0,2[&blockcount.t:bla=-1.0]:1.0)[&blockcount.t:bla=-1.0]:1.0)[&blockcount.t:bla=-1.0]:1.0)[&blockcount.t:bla=-1.0]:1.0;
+tree paperfig = ((4[&blockcount.t:bla=0.0]:1.0,5[&blockcount.t:bla=-1.0]:1.0)[&blockcount.t:bla=4.0]:1.0,(3[&blockcount.t:bla=-1.0]:1.0,(1[&blockcount.t:bla=2.0]:1.0,2[&blockcount.t:bla=0.0]:1.0)[&blockcount.t:bla=3.0]:1.0)[&blockcount.t:bla=0.0]:1.0)[&blockcount.t:bla=-1.0]:1.0;
+End;
