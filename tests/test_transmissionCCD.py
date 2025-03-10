@@ -3,19 +3,17 @@ from pathlib import Path
 
 
 def test_read_transmission_nexus():
-    test_tree_file = f"{Path(__file__).parent.absolute()}/data/BREATH5taxa.trees"
+    test_tree_file = f"{Path(__file__).parent.absolute()}/data/Filter-roetzer40.trees"
     trees = read_transmission_nexus(test_tree_file)
-    blockcountmap = {}
-    test = get_transmission_clades(trees[1], blockcountmap)
+    # test = get_transmission_clades(trees[1], blockcountmap)
+    m1, m2, blockcount_map = get_transmission_maps(trees)
+    get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map)
     assert False
 
 
-def test_transmission_clades():
-    test = transmission_clade(frozenset({1, 2}), False)
-    test1 = transmission_clade(frozenset({1, 2}), True)
-    testingdict = defaultdict()
-    testingdict[test] = 1
-    testingdict[test1] = 5
-    # todo this works, implement the same for the other function
-    #  need to add dictionary to keep track of the values for block count probably?
-    assert False
+def test_transmissionCCD_MAP_nexus():
+    test_tree_file = f"{Path(__file__).parent.absolute()}/data/Filter-roetzer40.trees"
+    output_file = f"{Path(__file__).parent.absolute()}/data/Filter-roetzer40-tCCD.tree"
+    transmissionCCD_MAP_nexus(input_trees_file=test_tree_file,
+                              output_tree_file=output_file, overwrite=True)
+    assert True

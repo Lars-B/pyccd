@@ -1,3 +1,4 @@
+import os.path
 import re
 from collections import defaultdict
 from dataclasses import dataclass
@@ -192,8 +193,7 @@ def get_transmission_maps(trees):
     return m1, m2, blockcount_map
 
 
-def get_transmission_ccd_tree_bottom_up(m1, m2):
-
+def get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map):
     seen_resolved_clades = {}
     all_clades = sorted(list(m1.keys()), key=len)  # sorted list of all clades, small (cherries) to big
 
@@ -210,7 +210,7 @@ def get_transmission_ccd_tree_bottom_up(m1, m2):
                 # it is a leaf, hence probability is 1
                 c1_prob = 1
             else:
-                if child1 in seen_resolved_clades:  # todo this won't work
+                if child1 in seen_resolved_clades:
                     c1_prob = seen_resolved_clades[child1][0]
                 else:
                     raise ValueError("Should never get here?!")
@@ -247,19 +247,40 @@ def get_transmission_ccd_tree_bottom_up(m1, m2):
             working_list.append(cur_split[1])
         if len(cur_split[2]) > 1:
             working_list.append(cur_split[2])
-
+    import numpy as np
+    # reccursive function to write newick based on the output dict created above
     def recursive_nwk_split_dict(clade):
         nonlocal output
+        nonlocal blockcount_map
         if len(clade) == 1:
-            return f"{next(iter(clade.clade))}[&blockcount:CCD={10 if clade.has_block else -2}]:1.0"
+            return f"{next(iter(clade.clade))}[&blockcount={np.median(blockcount_map[clade]) if clade.has_block else -1}]:1.0"
         else:
-            return (f"({recursive_nwk_split_dict(output[clade][0])}, "
+            return (f"({recursive_nwk_split_dict(output[clade][0])},"
                     f"{recursive_nwk_split_dict(output[clade][1])})"
-                    f"[&blockcount:CCD={10 if clade.has_block else -2}]:1.0")
+                    f"[&blockcount={np.median(blockcount_map[clade]) if clade.has_block else -1}]:1.0")
 
-    test = recursive_nwk_split_dict(root_clade)
-    # todo currently only the newick string for the tree, for figtree this needs to be put in a nexus file to work with the [] information
-    return test
+    return recursive_nwk_split_dict(root_clade)
 
 
+def transmissionCCD_MAP_nexus(input_trees_file, output_tree_file, overwrite=False):
+    """Takes input trees file and writes a tCCD1-MAP tree to the output file in Nexus format."""
+    if os.path.exists(output_tree_file):
+        if not overwrite:
+            raise FileExistsError("File exists, set 'overwrite=True' to enable overwriting.")
+        os.remove(output_tree_file)
 
+    if not os.path.exists(input_trees_file):
+        raise FileNotFoundError(f"Input trees {input_trees_file} not found.")
+
+    trees = read_transmission_nexus(input_trees_file)
+    m1, m2, blockcount_map = get_transmission_maps(trees)
+    newick_MAP = get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map)
+
+    #def copy_nexus_file(input_file, output_file):
+    with open(input_trees_file, 'r') as infile, open(output_tree_file, 'w+') as outfile:
+        for line in infile:
+            if line.strip().startswith("tree "):
+                break  # Stop reading when the\ tree section starts
+            outfile.write(line)
+
+        outfile.write(f"tree tCCD_MAP = {newick_MAP};\nEnd;\n")
