@@ -3,6 +3,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass
 from idlelib.pyparse import trans
+from multiprocessing.managers import Value
 
 import ete3
 
@@ -262,7 +263,7 @@ def get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map):
     return recursive_nwk_split_dict(root_clade)
 
 
-def transmissionCCD_MAP_nexus(input_trees_file, output_tree_file, overwrite=False):
+def transmissionCCD_MAP_nexus(input_trees_file, output_tree_file, overwrite=False, burnin=0):
     """Takes input trees file and writes a tCCD1-MAP tree to the output file in Nexus format."""
     if os.path.exists(output_tree_file):
         if not overwrite:
@@ -272,7 +273,14 @@ def transmissionCCD_MAP_nexus(input_trees_file, output_tree_file, overwrite=Fals
     if not os.path.exists(input_trees_file):
         raise FileNotFoundError(f"Input trees {input_trees_file} not found.")
 
+    if not (0 <= burnin < 1):
+        raise ValueError("Burnin should be a number between 0 and 1 representing the proportion of trees to delete at the beginning of the file.")
+
     trees = read_transmission_nexus(input_trees_file)
+    trees = trees[int(0.1 * len(trees)):]  # deleting burnin from trees
+    if len(trees) < 1:
+        raise ValueError("Treeset is empty, reduce burning or check file.")
+
     m1, m2, blockcount_map = get_transmission_maps(trees)
     newick_MAP = get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map)
 
