@@ -6,12 +6,12 @@
 CCDpy documentation
 ===================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+This is the documentation for the python implementation of conditional clade distributions (CCDs).
 
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+   tCCD
 

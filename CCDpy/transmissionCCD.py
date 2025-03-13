@@ -8,7 +8,15 @@ from multiprocessing.managers import Value
 import ete3
 
 
-def read_transmission_nexus(file: str, _ignore_ctrees=False) -> list:
+def read_transmission_nexus(file: str) -> list:
+    """
+    Function to read a nexus file that contains transmission trees.
+
+    :param file: Input file
+    :type file: str
+    :return: list of transmission trees
+    :rtype: list
+    """
     # re_tree returns nwk string without the root height and no ; in the end
     re_tree = re.compile("\t?tree .*=? (.*$)", flags=re.I | re.MULTILINE)
     # Used to delete the ; and a potential branchlength of the root
