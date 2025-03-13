@@ -1,9 +1,9 @@
 import os.path
 import re
+import warnings
 from collections import defaultdict
 from dataclasses import dataclass
-from idlelib.pyparse import trans
-from multiprocessing.managers import Value
+
 
 import ete3
 
@@ -147,13 +147,24 @@ def get_transmission_clades(tree, blockcountmap):
 
 def get_transmission_maps(trees):
 
+    # todo keep track of the branch lengths here and return list for these attributes (make extendable)
+    #  extend the idea of blockcount map to be attribute_map{blockcoutmap: {}, branchlengths: {}, etc.}
+    #  maybe control the attributes to summarize with a list of keywords
+
     m1 = defaultdict(int)  # map for each clade how often it got sampled
     m2 = defaultdict(int)  # map for each (c1,c2) clade how often this specific relation got sampled
+
+    # todo change this to one dict with attributes!
     blockcount_map = {}
+    branch_lengths_map = {}
+
+    # todo for this I will need to change the naming of nodes since I write this information into the node name...
+    # block_start_map = {}
+    # block_end_map = {}
+
 
     for ix, t in enumerate(trees):
         for node in t.traverse("levelorder"):
-            # todo this if should be > 1 since we also care about leafs now.
             if len(node) > 1:
                 c = node.children
                 c0_leafs = set()
@@ -164,6 +175,7 @@ def get_transmission_maps(trees):
                     c1_leafs.add(int(leaf.name.replace("%", "").split("/")[0]))
 
                 parent_clade_set = frozenset(sorted(c0_leafs.union(c1_leafs)))
+
                 if node.name:
                     blockcount = int(node.name.replace("%", "").split("/")[1])
                     if blockcount == -1:
@@ -177,6 +189,12 @@ def get_transmission_maps(trees):
                 else:
                     # this is the root, apprarently we don't have the name atm
                     parent_clade = transmission_clade(parent_clade_set, False)
+
+                # adding distance of parent clade to map of branch lengths
+                if parent_clade in branch_lengths_map:
+                    branch_lengths_map[parent_clade].append(node.dist)
+                else:
+                    branch_lengths_map[parent_clade] = [node.dist]
 
                 m1[parent_clade] += 1
 
@@ -193,16 +211,26 @@ def get_transmission_maps(trees):
             elif len(node) == 1:
                 # leaf node for which we need to add the blockcount to the blockcount_map
                 leaf_label, blockcount = map(int, node.name.replace("%", "").split("/"))
+
+                leaf_clade = transmission_clade(frozenset({leaf_label}), (blockcount != -1))
+                # todo change to default dicts of lists that we don't need to ask all the ifs here?
+                # adding branch length of the leaf node to the dict
+                if leaf_clade in branch_lengths_map:
+                    branch_lengths_map[leaf_clade].append(node.dist)
+                else:
+                    branch_lengths_map[leaf_clade] = [node.dist]
+
+                # if the clade has a block we need to keep track of the blockcount for later summarizing
                 if blockcount != -1:
-                    leaf_clade = transmission_clade(frozenset({leaf_label}), True)
                     if leaf_clade in blockcount_map:
                         blockcount_map[leaf_clade].append(blockcount)
                     else:
                         blockcount_map[leaf_clade] = [blockcount]
-    return m1, m2, blockcount_map
+    # todo change return to be a single map
+    return m1, m2, blockcount_map, branch_lengths_map
 
 
-def get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map):
+def get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map, branch_lengths_map):
     seen_resolved_clades = {}
     all_clades = sorted(list(m1.keys()), key=len)  # sorted list of all clades, small (cherries) to big
 
@@ -237,8 +265,11 @@ def get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map):
             split_prob = c1_prob * c2_prob * cur_prob
 
             if current_split[0] in seen_resolved_clades:
-                # todo the following is not randomly resolving tie breaks, just keeps the first found
-                if seen_resolved_clades[current_split[0]][0] <= split_prob:
+                if seen_resolved_clades[current_split[0]][0] < split_prob:
+                    seen_resolved_clades[current_split[0]] = (split_prob, current_split)
+                elif seen_resolved_clades[current_split[0]][0] == split_prob:
+                    # todo add a way to make the tie breaking deterministic or otherwise controllable
+                    warnings.warn("Tie breaking in effect.")
                     seen_resolved_clades[current_split[0]] = (split_prob, current_split)
             else:
                 seen_resolved_clades[current_split[0]] = (split_prob, current_split)
@@ -259,14 +290,16 @@ def get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map):
     import numpy as np
     # reccursive function to write newick based on the output dict created above
     def recursive_nwk_split_dict(clade):
+        # todo add other summary annotations to this funciton as an option
         nonlocal output
         nonlocal blockcount_map
+        nonlocal branch_lengths_map
         if len(clade) == 1:
-            return f"{next(iter(clade.clade))}[&blockcount={np.median(blockcount_map[clade]) if clade.has_block else -1}]:1.0"
+            return f"{next(iter(clade.clade))}[&blockcount={np.median(blockcount_map[clade]) if clade.has_block else -1}]:{np.mean(branch_lengths_map[clade])}"
         else:
             return (f"({recursive_nwk_split_dict(output[clade][0])},"
                     f"{recursive_nwk_split_dict(output[clade][1])})"
-                    f"[&blockcount={np.median(blockcount_map[clade]) if clade.has_block else -1}]:1.0")
+                    f"[&blockcount={np.median(blockcount_map[clade]) if clade.has_block else -1}]:{np.mean(branch_lengths_map[clade])}")
 
     return recursive_nwk_split_dict(root_clade)
 
@@ -289,10 +322,9 @@ def transmissionCCD_MAP_nexus(input_trees_file, output_tree_file, overwrite=Fals
     if len(trees) < 1:
         raise ValueError("Treeset is empty, reduce burning or check file.")
 
-    m1, m2, blockcount_map = get_transmission_maps(trees)
-    newick_MAP = get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map)
+    m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees)
+    newick_MAP = get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map, branch_lengths_map)
 
-    #def copy_nexus_file(input_file, output_file):
     with open(input_trees_file, 'r') as infile, open(output_tree_file, 'w+') as outfile:
         for line in infile:
             if line.strip().startswith("tree "):
