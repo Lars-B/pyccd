@@ -1,0 +1,17 @@
+[project]
+name = "CCDpy"
+version = "0.0.1"
+authors = [
+  { name="Lars Berling", email="berlinglars96@gmail.com" },
+]
+description = "A python package for conditional clade distributions (CCD)"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/Lars-B/CCDpy"
+Issues = "https://github.com/Lars-B/CCDpy/issues"
