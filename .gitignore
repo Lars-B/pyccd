@@ -1,3 +1,6 @@
 *.DS_Store
 *._.DS_Store
 .idea/
+
+# Sphinx documentation
+docs/_build/
