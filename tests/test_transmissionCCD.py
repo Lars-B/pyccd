@@ -2,6 +2,8 @@ from CCDpy.transmissionCCD import *
 from pathlib import Path
 
 
+# todo write proper tests for the functions...
+
 def test_read_transmission_nexus():
     test_tree_file = f"{Path(__file__).parent.absolute()}/data/Filter-roetzer40.trees"
     trees = read_transmission_nexus(test_tree_file)
@@ -15,5 +17,15 @@ def test_transmissionCCD_MAP_nexus():
     test_tree_file = f"{Path(__file__).parent.absolute()}/data/Filter-roetzer40.trees"
     output_file = f"{Path(__file__).parent.absolute()}/data/Filter-roetzer40-tCCD.tree"
     transmissionCCD_MAP_nexus(input_trees_file=test_tree_file,
-                              output_tree_file=output_file, overwrite=True)
+                              output_tree_file=output_file,
+                              overwrite=True,
+                              burnin=.1)
+    assert True
+
+
+def test_lazy():
+    test_tree_file = f"{Path(__file__).parent.absolute()}/data/roetzer40.trees"
+    output_file = f"{Path(__file__).parent.absolute()}/data/testing_tCCD.tree"
+    transmissionCCD_MAP_nexus(input_trees_file=test_tree_file,
+                              output_tree_file=output_file, overwrite=True, burnin=.1)
     assert True
