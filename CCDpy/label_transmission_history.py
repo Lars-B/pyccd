@@ -17,8 +17,12 @@ def label_transmission_tree(etree):
     for node in etree.traverse("levelorder"):
         # Labeled nodes don't have to be considered
         if hasattr(node, "transm_ancest"):
+            # this should not happen here, but is good to keep if we want to merge the loops later on.
             continue
         # There can still be leaves here that have an unknown transmission ancestor...
+        if node.is_root():
+            # todo manually setting the root blockcount to -1, should be the assumption anyway???
+            node.blockcount = -1
         if node.blockcount > 0:
             # There is a block so we can immediately lable this transmission ancestry
             node.transm_ancest = f"Unknown-{unknown_count}"
@@ -50,7 +54,7 @@ def label_transmission_tree(etree):
                                 # the node up has not been labeled and extends the path
                                 if not working_node.up in working_node_list:
                                     working_node_list.append(working_node.up)
-
+                # If working_node has children we need to sort those out too
                 if len(working_node.children) > 0:
                     assert len(working_node.children) == 2, "Non binary tree found, not supported!"
                     for c in working_node.children:
@@ -73,34 +77,32 @@ def label_transmission_tree(etree):
     while top_infected_nodes_list:
         cur_node = top_infected_nodes_list.pop()
         assert hasattr(cur_node, "transm_ancest"), "This node has to be labeled here!"
-        if cur_node in unlabeled_nodes_list:
-            print("This shouldn't happen here...!")
-            unlabeled_nodes_list.remove(cur_node)
+        assert cur_node not in unlabeled_nodes_list, "This node should not be in the unlabeled list!"
         if len(cur_node.children) > 0:
             assert len(cur_node.children) == 2, "Non binary tree found, not supported!"
             for c in cur_node.children:
                 if not hasattr(c, "transm_ancest"):
-                    if c.blockcount in (0, -1):
-                        # child of top infected node
-                        # if no event or one event on the edge we can label it with the ancestor
-                        c.transm_ancest = cur_node.transm_ancest
-                        if c.blockcount == -1:
-                            # only need to keep it if there was no event, i.e. path continues
-                            top_infected_nodes_list.append(c)
-                            if c in unlabeled_nodes_list:
-                                # Removing the child c if it was previously added to unlabeled list
-                                unlabeled_nodes_list.remove(c)
+                    assert c.blockcount in (0, -1), "A node with a higher blockcount should have been labeled before this point in the code."
+                    # child of top infected node
+                    # if no event or one event on the edge we can label it with the ancestor
+                    c.transm_ancest = cur_node.transm_ancest
+                    if c in unlabeled_nodes_list:
+                        # Removing the child c if it was previously added to unlabeled list
+                        unlabeled_nodes_list.remove(c)
+                    if c.blockcount == -1:
+                        # only need to keep it if there was no event, i.e. path continues
+                        top_infected_nodes_list.append(c)
 
 
     if len(unlabeled_nodes_list) == 0:
         return
 
-    # todo might want to use this for etree: t.search_nodes(attr=value)
-
     # Sorting the list of unlabeled nodes by their level to do a for loop that is doing level order within the whole tree
     unlabeled_nodes_list.sort(key=lambda obj: obj.get_distance(etree.get_tree_root(), topology_only=True))
     for node in unlabeled_nodes_list:
-        assert not hasattr(node, "transm_ancest"), "This should never happen! We visited a node twice for no need..."
+        # assert not hasattr(node, "transm_ancest"), "This should never happen! We visited a node twice for no need..."
+        if hasattr(node, "transm_ancest"):
+            raise NotImplementedError("Needs correct implementation...")
         assert node.blockcount < 1, "These nodes should be labeled at this point."
         # all the paths from leaves have been labeled, at this point there is no path to any leaf from here
         # since we have ordered the nodes in the list accordign to their 'level' in the tree the ancestry pulls down
@@ -112,12 +114,16 @@ def label_transmission_tree(etree):
         else:
             node_sibling = next(x for x in node.up.children if x != node)
             if node_sibling.blockcount == -1:
-                node.transm_ancest = node_sibling.transm_ancest
+                if hasattr(node_sibling, "transm_ancest"):
+                    node.transm_ancest = node_sibling.transm_ancest
+                else:
+                    # Internal path that is all unknown but haven't labeled it yet, start with this node
+                    node.transm_ancest = f"Unknown-{unknown_count}"
+                    unknown_count += 1
             else:
                 node.transm_ancest = f"Unknown-{unknown_count}"
                 unknown_count += 1
 
     # todo add a counter of how often we visit each node, try to minimize that to be 1 at best
-    # todo write the BREATH testing tree file so that we have all the cases visited at least once...
     cur_tree_nwk = etree.write(features=["transm_ancest"], format_root_node=True, format=2)
     return
