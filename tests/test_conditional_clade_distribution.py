@@ -43,5 +43,5 @@ def test_sample_logprob_from_ccd(twenty_taxa_tts):
 
 def test_calc_Entropy(twenty_taxa_tts):
     m1, m2, u = get_maps(twenty_taxa_tts)
-    h = calc_Entropy(m1, m2)
+    h = calc_entropy(m1, m2)
     assert h == 7.500020954155561, "Entropy calculation failed!"
