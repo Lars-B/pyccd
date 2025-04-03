@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'CCDpy'
+project = 'pyccd'
 copyright = '2025, Lars Berling'
 author = 'Lars Berling'
 

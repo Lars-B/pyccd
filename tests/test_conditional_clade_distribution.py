@@ -1,4 +1,4 @@
-from CCDpy.conditional_clade_distribution import *
+from pyccd.conditional_clade_distribution import *
 from pathlib import Path
 import numpy as np
 

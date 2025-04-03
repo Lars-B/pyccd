@@ -8,7 +8,7 @@ Dependencies:
 import re
 import ete3
 
-from CCDpy.label_transmission_history import label_transmission_tree
+from pyccd.label_transmission_history import label_transmission_tree
 
 
 

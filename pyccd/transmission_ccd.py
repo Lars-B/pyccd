@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 from docutils.io import InputError
 
-from CCDpy.read_breath_nexus import read_transmission_nexus_history
+from pyccd.read_breath_nexus import read_transmission_nexus_history
 
 
 @dataclass(frozen=True)
