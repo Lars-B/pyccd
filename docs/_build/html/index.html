@@ -19,7 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Transmission CCDs" href="tCCD.html" /> 
+    <link rel="next" title="Extracting transmission history for trees" href="tCCD.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -43,7 +43,8 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tCCD.html">Transmission CCDs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tCCD.html">Extracting transmission history for trees</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tCCD.html#module-CCDpy.label_transmission_history">Labeling a tree with transmission history</a></li>
 </ul>
 
         </div>
@@ -76,9 +77,16 @@
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tCCD.html">Transmission CCDs</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tCCD.html#CCDpy.transmissionCCD.transmissionCCD_MAP_nexus"><code class="docutils literal notranslate"><span class="pre">transmissionCCD_MAP_nexus()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="tCCD.html#CCDpy.transmissionCCD.transmission_clade"><code class="docutils literal notranslate"><span class="pre">transmission_clade</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="tCCD.html">Extracting transmission history for trees</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tCCD.html#CCDpy.extract_transmission_trees.read_transmission_nexus"><code class="docutils literal notranslate"><span class="pre">read_transmission_nexus()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tCCD.html#module-CCDpy.label_transmission_history">Labeling a tree with transmission history</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tCCD.html#CCDpy.label_transmission_history._label_all_nodes"><code class="docutils literal notranslate"><span class="pre">_label_all_nodes()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tCCD.html#CCDpy.label_transmission_history._label_all_remaining_unknowns"><code class="docutils literal notranslate"><span class="pre">_label_all_remaining_unknowns()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tCCD.html#CCDpy.label_transmission_history._label_leaf_and_reachable_nodes"><code class="docutils literal notranslate"><span class="pre">_label_leaf_and_reachable_nodes()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tCCD.html#CCDpy.label_transmission_history._label_top_infected_nodes"><code class="docutils literal notranslate"><span class="pre">_label_top_infected_nodes()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tCCD.html#CCDpy.label_transmission_history.label_transmission_tree"><code class="docutils literal notranslate"><span class="pre">label_transmission_tree()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -89,7 +97,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="tCCD.html" class="btn btn-neutral float-right" title="Transmission CCDs" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="tCCD.html" class="btn btn-neutral float-right" title="Extracting transmission history for trees" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

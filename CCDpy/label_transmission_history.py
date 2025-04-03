@@ -54,13 +54,14 @@ def label_transmission_tree(etree):
 def _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_nodes_list):
     """
         Labels all leaf nodes and recursively propagates the
-         transmission ancestry to all reachable nodes.
+        transmission ancestry to all reachable nodes.
 
         This function processes all the leaves in the provided tree (etree).
         For each leaf node:
+
         - If the blockcount is -1 (indicating no transmission event),
-            it labels the leaf with its name and propagates this label upwards and to the
-            children, marking all reachable nodes with the same ancestry.
+          it labels the leaf with its name and propagates this label upwards and to the
+          children, marking all reachable nodes with the same ancestry.
         - Creates a queue of top infected nodes that arise during the propagation
 
         The function modifies the tree by adding the transmission ancestry feature to nodes and
@@ -183,10 +184,10 @@ def _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list):
     - Child nodes are removed from the `unlabeled_nodes_list` once labeled.
 
     :param top_infected_nodes_list: List of nodes with transmission ancestry
-                                     that need to propagate labels to their children.
+                                    that need to propagate labels to their children.
     :type top_infected_nodes_list: Collections.dequeue
     :param unlabeled_nodes_list: List of nodes that need to be labeled with
-                                  transmission ancestry.
+                                 transmission ancestry.
     :type unlabeled_nodes_list: list
     :return: Updated `unlabeled_nodes_list` after labeling top-infected nodes' children.
     :rtype: list
@@ -218,30 +219,31 @@ def _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list):
 
 def _label_all_remaining_unknowns(unlabeled_nodes_list: List, unknown_count: int) -> None:
     """
-        Labels all nodes in the provided list with the unknown transmission history
-        IMPORTANT: This function assumes that the list of unlabeled nodes provided
-                    is sorted according to their level in the tree.
+    Labels all nodes in the provided list with the unknown transmission history
+    IMPORTANT: This function assumes that the list of unlabeled nodes provided
+    is sorted according to their level in the tree.
 
-        The function modifies the nodes in place and does not return
-        any values. The unknown_count is updated as each node is labeled.
+    The function modifies the nodes in place and does not return
+    any values. The unknown_count is updated as each node is labeled.
 
-        The method works as follows:
-        - If a node is the root, it is labeled with the current unknown_count.
-        - If a node's parent (up) has a blockcount of -1,
-            the node inherits the parent’s transmission ancestry.
-        - If neither of the above conditions are true,
-            the function checks the node’s sibling for a label.
-        - If the sibling has a transmission ancestry,
-            the node is labeled with the same identifier.
-        - If no valid label is found,
-            the node is labeled with a new "Unknown-{unknown_count}" label.
+    The method works as follows:
 
-        :param unlabeled_nodes_list: List of nodes to be labeled
-                                        with transmission ancestry identifiers.
-        :type unlabeled_nodes_list: list
-        :param unknown_count: The current count of labeled "Unknown" nodes
-        :type unknown_count: int
-        """
+    - If a node is the root: it is labeled with the current unknown_count.
+    - If a node's parent (up) has a blockcount of -1:
+      the node inherits the parent’s transmission ancestry.
+    - If neither of the above conditions are true:
+      the function checks the node’s sibling for a label.
+    - If the sibling has a transmission ancestry:
+      the node is labeled with the same identifier.
+    - If no valid label is found:
+      the node is labeled with a new "Unknown-{unknown_count}" label.
+
+    :param unlabeled_nodes_list: List of nodes to be labeled
+                                 with transmission ancestry identifiers.
+    :type unlabeled_nodes_list: list
+    :param unknown_count: The current count of labeled "Unknown" nodes
+    :type unknown_count: int
+    """
     for node in unlabeled_nodes_list:
         if hasattr(node, "transm_ancest"):
             # This case should not happen, if it does it needs to be figured out...
