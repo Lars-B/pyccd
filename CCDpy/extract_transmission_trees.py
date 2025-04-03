@@ -1,7 +1,8 @@
 import re
+import ete3
+
 from CCDpy.label_transmission_history import label_transmission_tree
 
-import ete3
 
 
 def read_transmission_nexus(file: str) -> list:
@@ -67,7 +68,22 @@ def read_transmission_nexus(file: str) -> list:
                 # unknown_count = 0  # counting the unknown ancestors for separation
 
 
-                # todo maybe make an unknown/transm_ancest class that we can easily check for instead of just a string...
+                # adjusting the tree to contain the blockcount label and correct node names
+                for node in new_tree.traverse("levelorder"):
+                    # this should technically never be the case...
+                    if not hasattr(node, "blockcount"):
+                        # Assert node.name format
+                        assert node.name and "/" in node.name, (f"Invalid node name format: "
+                                                                f"'{node.name}' "
+                                                                f"(expected 'name/blockcount')")
+
+                        # Extract node name and blockcount safely
+                        # Ensure only one split
+                        cur_name, cur_blockcount = node.name.replace("%", "").split("/", 1)
+                        # Strip spaces & convert safely
+                        node.add_feature("blockcount", int(cur_blockcount.strip()))
+                        # Remove unnecessary spaces
+                        node.name = cur_name.strip()
 
                 label_transmission_tree(new_tree)
 
@@ -75,4 +91,3 @@ def read_transmission_nexus(file: str) -> list:
 
                 trees.append(new_tree)
     return trees
-
