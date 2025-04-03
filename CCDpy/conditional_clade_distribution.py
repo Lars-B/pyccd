@@ -1,25 +1,26 @@
-from collections import defaultdict
-from decimal import *
-import ete3
-import numpy as np
 import re
+from collections import defaultdict
+from decimal import Decimal
+import ete3
+from numpy import random, log
+from docutils.io import InputError
 
 
 def read_nexus(file: str, _ignore_ctrees=False) -> list:
+    # TODO This can be merged with the other read nexus function, should just be one big function..
     # re_tree returns nwk string without the root height and no ; in the end
     re_tree = re.compile("\t?tree .*=? (.*$)", flags=re.I | re.MULTILINE)
     # Used to delete the ; and a potential branchlength of the root
     # name_dict = get_mapping_dict(file)  # Save tree label names in dict
-
-    # todo this will be changed once we are interested in the branch annotation information
     brackets = re.compile(r'\[[^\]]*\]')  # Used to delete info in []
 
     trees = []
-    with open(file, 'r') as f:
+    with open(file, 'r', encoding="UTF-8") as f:
         for line in f:
             if re_tree.match(line):
-                tree_string = f'{re.split(re_tree, line)[1][:re.split(re_tree, line)[1].rfind(")") + 1]};'
-                # trees.append(TimeTree(re.sub(brackets, "", tree_string), _ignore_ctrees=_ignore_ctrees))
+                tree_string = (
+                    f'{re.split(re_tree, line)[1][:re.split(re_tree, line)[1].rfind(")") + 1]};'
+                )
                 trees.append(ete3.Tree(re.sub(brackets, "", tree_string), format=0))
     return trees
 
@@ -28,7 +29,7 @@ def get_clades(tree):
     treestr = tree.write(format=9)
     clades = set()
     if not (treestr[0] == '(' and treestr[-2] == ')' and treestr[-1] == ';'):
-        raise Exception("Invalid tree string given! (no ';' at the end)")
+        raise InputError("Invalid tree string given! (no ';' at the end)")
     opend = []
     re_brackets = re.compile(r"\(|\)")
     for i in range(1, len(treestr) - 2):
@@ -36,12 +37,12 @@ def get_clades(tree):
             opend.append(i)
         elif treestr[i] == ')':
             if not opend:
-                raise Exception("Invalid tree string given! (to many ')')")
+                raise InputError("Invalid tree string given! (to many ')')")
             cur = treestr[opend[-1]:i]
             clades.add(frozenset(re.sub(re_brackets, '', cur).split(',')))
             del opend[-1]
     if opend:
-        raise Exception("Invalid tree string given! (to many '(')")
+        raise InputError("Invalid tree string given! (to many '(')")
     return clades
 
 
@@ -52,9 +53,6 @@ def get_maps(trees):
     uniques = {}
 
     seen = {}
-    # todo m1 needs to have the root and the single leaf clades
-    #  need to get a list of weights for the unique trees
-    #  this needs to replace trees in the for loop and the weight will be added instead of 1 each time!
 
     for ix, t in enumerate(trees):
         if not frozenset(sorted(get_clades(t))) in seen:
@@ -81,9 +79,9 @@ def get_maps(trees):
     return m1, m2, uniques
 
 
-def get_tree_probability(tree, m1, m2, log=False):
+def get_tree_probability(tree, m1, m2, use_log=False):
     # getcontext().prec = 20
-    probability = 0 if log else 1
+    probability = 0 if use_log else 1
     for node in tree.traverse("levelorder"):
         if len(node) > 2:
             c = node.children
@@ -95,25 +93,38 @@ def get_tree_probability(tree, m1, m2, log=False):
                 c1_leafs.add(int(leaf.name))
             parent_clade = frozenset(sorted(c0_leafs.union(c1_leafs)))
             if m1[parent_clade] != 0:
-                if min(c0_leafs) < min(c1_leafs):
-                    if log:
-                        probability += np.log(m2[(parent_clade, frozenset(c0_leafs))] / m1[parent_clade])
-                    else:
-                        probability *= Decimal(m2[(parent_clade, frozenset(c0_leafs))]) / Decimal(m1[parent_clade])
+                # if min(c0_leafs) < min(c1_leafs):
+                #     if use_log:
+                #         probability += np.log(
+                #                        m2[(parent_clade, frozenset(c0_leafs))] / m1[parent_clade])
+                #     else:
+                #         probability *= (Decimal(m2[(parent_clade, frozenset(c0_leafs))]) /
+                #                         Decimal(m1[parent_clade]))
+                # else:
+                #     if use_log:
+                #         probability += np.log(m2[(parent_clade, frozenset(c1_leafs))] /
+                #                               m1[parent_clade])
+                #     else:
+                #         probability *= (Decimal(m2[(parent_clade, frozenset(c1_leafs))]) /
+                #                         Decimal(m1[parent_clade]))
+                leaf_set = frozenset(c0_leafs) if min(c0_leafs) < min(c1_leafs) \
+                                                else frozenset(c1_leafs)
+                m2_value = m2[(parent_clade, leaf_set)]
+                m1_value = m1[(parent_clade)]
+                if use_log:
+                    probability += log(m2_value / m1_value)
                 else:
-                    if log:
-                        probability += np.log(m2[(parent_clade, frozenset(c1_leafs))] / m1[parent_clade])
-                    else:
-                        probability *= Decimal(m2[(parent_clade, frozenset(c1_leafs))]) / Decimal(m1[parent_clade])
+                    probability *= Decimal(m2_value) / Decimal(m1_value)
         # if probability == 0:
         #     return 0
-    # if log:
+    # if use_log:
     #     return float(probability-1)
     return float(probability)
 
 
 def get_ccd_tree_bottom_up(m1, m2):
-    # working_list = [([max(m1.keys())], [], 1)]  # initialize with root clade, empty tree, probability 1
+    # initialize with root clade, empty tree, probability 1
+    # working_list = [([max(m1.keys())], [], 1)]
 
     seen_resolved_clades = {}
 
@@ -145,13 +156,15 @@ def get_ccd_tree_bottom_up(m1, m2):
             #     continue
 
             cur_prob = m2[split] / m1[split[0]]  # Prob of current parent, given split
-            split_prob = c1_prob * c2_prob * cur_prob  # best probability of current parent with split
+            # best probability of current parent with split
+            split_prob = c1_prob * c2_prob * cur_prob
+            # math.isclose instead of == for float comparison 0.1+0.2 != 0.3
             # if math.isclose(split_prob, prob) or split_prob > prob:
-            # if split_prob >= prob:  # does not work due to float comparison, 0.1 + 0.2 != 0.3, use math.isclose instead of ==
             if split[0] in seen_resolved_clades:
                 # parent was already found, do we need to update?
                 if seen_resolved_clades[split[0]][0] <= split_prob:
-                    # this split has better probability, therefore update the seen_resolved_clades with the better split of split[0]
+                    # this split has better probability,
+                    # therefore update the seen_resolved_clades with the better split of split[0]
                     seen_resolved_clades[split[0]] = (split_prob, child1)
             else:
                 # we have not seen the parent before
@@ -255,7 +268,7 @@ def sample_tree_from_ccd(m1, m2, n=1):
             cur_sum = m1[cur_clade]  # same as sum([i[1] for i in next_splits])
             cur_p = [i[1]/cur_sum for i in possible_splits]
 
-            chosen_split = np.random.choice([i[0][1] for i in possible_splits], p=cur_p)
+            chosen_split = random.choice([i[0][1] for i in possible_splits], p=cur_p)
             remainder_split = cur_clade.difference(chosen_split)
             if len(chosen_split) > 2:
                 working_list.append((chosen_split))
@@ -267,7 +280,8 @@ def sample_tree_from_ccd(m1, m2, n=1):
 
 
 def sample_logprob_from_ccd(m1, m2, n=1):
-    # todo this is fairly inefficient for some reason, may need change in the future, same for the other sampling funciton
+    # todo this is fairly inefficient for some reason,
+    #  may need change in the future, same for the other sampling funciton
     # sample n trees from the CCD distribution, relative to its clade probabilities in each step
     # samples = []
     probabilities = []
@@ -285,21 +299,21 @@ def sample_logprob_from_ccd(m1, m2, n=1):
             cur_sum = m1[cur_clade]  # same as sum([i[1] for i in next_splits])
             cur_p = [i[1]/cur_sum for i in possible_splits]
 
-            chosen_split = np.random.choice([i[0][1] for i in possible_splits], p=cur_p)
+            chosen_split = random.choice([i[0][1] for i in possible_splits], p=cur_p)
             remainder_split = cur_clade.difference(chosen_split)
             if len(chosen_split) > 2:
                 working_list.append((chosen_split))
             if len(remainder_split) > 2:
                 working_list.append(remainder_split)
             # cur_sample.append((cur_clade, chosen_split))
-            cur_prob += np.log(m2[(cur_clade, chosen_split)] / m1[cur_clade])
+            cur_prob += log(m2[(cur_clade, chosen_split)] / m1[cur_clade])
 
         # samples.append(get_tree_from_list_of_splits(cur_sample))
         probabilities.append(cur_prob)
     return probabilities
 
 
-def calc_Entropy(m1, m2):
+def calc_entropy(m1, m2):
     h_dict = defaultdict(lambda: 0)
     for c in sorted(m1.keys(), reverse=False, key=len):
         # iterate over all clades, from small to large
@@ -312,5 +326,5 @@ def calc_Entropy(m1, m2):
             #     h_dict[c] -= p * np.log(p)
             # else:
                 # if c has more than 3 taxa use formula
-            h_dict[c] -= p * (np.log(p) - h_dict[child] - h_dict[c.difference(child)])
+            h_dict[c] -= p * (log(p) - h_dict[child] - h_dict[c.difference(child)])
     return h_dict[max(m1.keys())]
