@@ -6,25 +6,6 @@ from numpy import random, log
 from docutils.io import InputError
 
 
-def read_nexus(file: str, _ignore_ctrees=False) -> list:
-    # TODO This can be merged with the other read nexus function, should just be one big function..
-    # re_tree returns nwk string without the root height and no ; in the end
-    re_tree = re.compile("\t?tree .*=? (.*$)", flags=re.I | re.MULTILINE)
-    # Used to delete the ; and a potential branchlength of the root
-    # name_dict = get_mapping_dict(file)  # Save tree label names in dict
-    brackets = re.compile(r'\[[^\]]*\]')  # Used to delete info in []
-
-    trees = []
-    with open(file, 'r', encoding="UTF-8") as f:
-        for line in f:
-            if re_tree.match(line):
-                tree_string = (
-                    f'{re.split(re_tree, line)[1][:re.split(re_tree, line)[1].rfind(")") + 1]};'
-                )
-                trees.append(ete3.Tree(re.sub(brackets, "", tree_string), format=0))
-    return trees
-
-
 def get_clades(tree):
     treestr = tree.write(format=9)
     clades = set()
