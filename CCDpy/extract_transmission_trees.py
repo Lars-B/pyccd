@@ -23,7 +23,6 @@ def read_transmission_nexus(file: str) -> list:
     """
     # re_tree returns nwk string without the root height and no ; in the end
     re_tree = re.compile("\t?tree .*=? (.*$)", flags=re.I | re.MULTILINE)
-    # Used to delete the ; and a potential branch length of the root
     # name_dict = get_mapping_dict(file)  # Save tree label names in dict
 
     trees = []
@@ -56,11 +55,11 @@ def read_transmission_nexus(file: str) -> list:
 
                 # Replace all matches
                 new_tree_string = re.sub(pattern, replace_match, tree_string)
-                new_tree = ete3.Tree(new_tree_string, format=1)
+                ete3tree = ete3.Tree(new_tree_string, format=1)
 
 
                 # adjusting the tree to contain the blockcount label and correct node names
-                for node in new_tree.traverse("levelorder"):
+                for node in ete3tree.traverse("levelorder"):
                     # this should technically never be the case...
                     if not hasattr(node, "blockcount"):
                         # Assert node.name format
@@ -76,9 +75,7 @@ def read_transmission_nexus(file: str) -> list:
                         # Remove unnecessary spaces
                         node.name = cur_name.strip()
 
-                label_transmission_tree(new_tree)
+                label_transmission_tree(ete3tree)
 
-                # rec_transmission_labelling(new_tree)
-
-                trees.append(new_tree)
+                trees.append(ete3tree)
     return trees
