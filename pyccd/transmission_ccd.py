@@ -104,65 +104,117 @@ def get_transmission_maps(trees: list, type_str: str = "Blocks") -> tuple:
 
     # traversing all nodes of all trees using levelorder traversal
     for node in (node for t in trees for node in t.traverse("levelorder")):
+        assert hasattr(node, "name"), "Node should have a name!"
+        assert hasattr(node, "blockcount"), ("The nodes should have the blockcount "
+                                             "attribute!")
         if len(node) > 1:
             assert len(node.children) == 2, "Non binary tree not supported!"
-            assert hasattr(node, "name"), "Node should have a name!"
-            assert hasattr(node, "blockcount"), ("The nodes should have the blockcount "
-                                                 "attribute!")
 
-            c0_leafs = {int(leaf.name) for leaf in node.children[0]}
-            c1_leafs = {int(leaf.name) for leaf in node.children[1]}
-            parent_clade_set = frozenset(sorted(c0_leafs.union(c1_leafs)))
+            parent_clade, child0_clade, child1_clade, blockcount_map, branch_lengths_map = (
+                _add_internal_clade(node, ccd_type, blockcount_map, branch_lengths_map))
 
-            match ccd_type:
-                case TypeCCD.BLOCKS:
-                    has_block = node.blockcount != -1
-                    parent_clade = TransmissionBlockClade(parent_clade_set, has_block)
-                    child0_clade = TransmissionBlockClade(frozenset(c0_leafs),
-                                                          node.children[0].blockcount != -1)
-                    child1_clade = TransmissionBlockClade(frozenset(c1_leafs),
-                                                          node.children[1].blockcount != -1)
-                    if has_block:
-                        blockcount_map[parent_clade].append(node.blockcount)
-                case TypeCCD.ANCESTRY:
-                    parent_clade = TransmissionAncestryClade(parent_clade_set, node.transm_ancest)
-                    child0_clade = TransmissionAncestryClade(frozenset(c0_leafs),
-                                                             node.children[0].transm_ancest)
-                    child1_clade = TransmissionAncestryClade(frozenset(c1_leafs),
-                                                             node.children[1].transm_ancest)
-                case _:
-                    raise ValueError(f"Unknown type given: {ccd_type}")
-
-            # adding distance of parent clade to map of branch lengths
-            branch_lengths_map[parent_clade].append(node.dist)
             m1[parent_clade] += 1
+            # child0 and child1 are sorted within _add_internal_node function
+            # child0 always contains the min leaf label among the two clades
+            m2[(parent_clade, child0_clade, child1_clade)] += 1
 
-            # in m2 the split clade with the lower int for taxa is entered first
-            if min(c0_leafs) < min(c1_leafs):
-                m2[(parent_clade, child0_clade, child1_clade)] += 1
-            else:
-                m2[(parent_clade, child1_clade, child0_clade)] += 1
         elif len(node) == 1:
             assert node.is_leaf(), "Should be a leaf node!"
             # leaf node for which we need to add the blockcount to the blockcount_map
-
-            match ccd_type:
-                case TypeCCD.BLOCKS:
-                    leaf_clade = TransmissionBlockClade(frozenset({int(node.name)}),
-                                                        (node.blockcount != -1))
-                    # if the clade has a block we need to keep track of the blockcount for summaries
-                    if node.blockcount != -1:
-                        blockcount_map[leaf_clade].append(node.blockcount)
-
-                case TypeCCD.ANCESTRY:
-                    leaf_clade = TransmissionAncestryClade(frozenset({int(node.name)}),
-                                                           node.transm_ancest)
-                case _:
-                    raise ValueError(f"Unknown type given: {ccd_type}")
-            # adding branch length of the leaf node to the dict
-            branch_lengths_map[leaf_clade].append(node.dist)
+            blockcount_map, branch_lengths_map = _add_leaf_clade(node, ccd_type,
+                                                                 blockcount_map,
+                                                                 branch_lengths_map)
 
     return m1, m2, blockcount_map, branch_lengths_map
+
+
+def _add_internal_clade(node, ccd_type, blockcount_map: dict, branch_lengths_map: dict) \
+        -> tuple[BaseClade, BaseClade, BaseClade, dict, dict]:
+    """
+    Processes an internal node by constructing parent and child clades based on the CCD type,
+    and updates blockcount and branch length maps accordingly.
+
+    :param node: The internal tree node to process. Assumed to have two children, a blockcount,
+                 branch length (dist), and optionally transmission ancestry.
+    :type node: Node of an ete3.Tree, technically any object
+                with attributes 'children', 'blockcount', 'dist', and optionally 'transm_ancest'
+    :param ccd_type: Type of CCD to use and construct clades for.
+    :type ccd_type: TypeCCD
+    :param blockcount_map: Dictionary mapping clades to a list of blockcounts.
+    :type blockcount_map: dict
+    :param branch_lengths_map: Dictionary mapping clades to a list of branch lengths.
+    :type branch_lengths_map: dict
+    :return: A tuple containing the parent clade,
+             the two child clades (ordered by minimum leaf label),
+             and the updated blockcount and branch lengths maps.
+    :rtype: tuple[BaseClade, BaseClade, BaseClade, dict, dict]
+    """
+    c0_leafs = {int(leaf.name) for leaf in node.children[0]}
+    c1_leafs = {int(leaf.name) for leaf in node.children[1]}
+    parent_clade_set = frozenset(sorted(c0_leafs.union(c1_leafs)))
+
+    match ccd_type:
+        case TypeCCD.BLOCKS:
+            has_block = node.blockcount != -1
+            parent_clade = TransmissionBlockClade(parent_clade_set, has_block)
+            child0_clade = TransmissionBlockClade(frozenset(c0_leafs),
+                                                  node.children[0].blockcount != -1)
+            child1_clade = TransmissionBlockClade(frozenset(c1_leafs),
+                                                  node.children[1].blockcount != -1)
+            if has_block:
+                blockcount_map[parent_clade].append(node.blockcount)
+        case TypeCCD.ANCESTRY:
+            parent_clade = TransmissionAncestryClade(parent_clade_set, node.transm_ancest)
+            child0_clade = TransmissionAncestryClade(frozenset(c0_leafs),
+                                                     node.children[0].transm_ancest)
+            child1_clade = TransmissionAncestryClade(frozenset(c1_leafs),
+                                                     node.children[1].transm_ancest)
+        case _:
+            raise ValueError(f"Unknown type given: {ccd_type}")
+
+    # adding distance of parent clade to map of branch lengths
+    branch_lengths_map[parent_clade].append(node.dist)
+
+    # Depending on the lower value leaf we return child0 and child1 clades
+    if min(c0_leafs) < min(c1_leafs):
+        return parent_clade, child0_clade, child1_clade, blockcount_map, branch_lengths_map
+    return parent_clade, child1_clade, child0_clade, blockcount_map, branch_lengths_map
+
+
+def _add_leaf_clade(node, ccd_type: TypeCCD, blockcount_map: dict,
+                    branch_lengths_map: dict) -> tuple[dict, dict]:
+    """
+    Processes a leaf node by creating an appropriate clade based on the CCD type,
+    and updates blockcount and branch length maps accordingly.
+
+    :param node: The tree node corresponding to a leaf.
+    :type node: Node of an ete3.Tree, technically any object with attributes
+                'name', 'blockcount', 'dist', and possibly 'transm_ancest'
+    :param ccd_type: Type of CCD to use and construct clades for.
+    :type ccd_type: TypeCCD
+    :param blockcount_map: Dictionary mapping clades to a list of blockcounts.
+    :type blockcount_map: dict
+    :param branch_lengths_map: Dictionary mapping clades to a list of branch lengths.
+    :type branch_lengths_map: dict
+    :return: Updated blockcount_map and branch_lengths_map.
+    :rtype: tuple[dict, dict]
+    """
+    match ccd_type:
+        case TypeCCD.BLOCKS:
+            leaf_clade = TransmissionBlockClade(frozenset({int(node.name)}),
+                                                (node.blockcount != -1))
+        case TypeCCD.ANCESTRY:
+            leaf_clade = TransmissionAncestryClade(frozenset({int(node.name)}),
+                                                   node.transm_ancest)
+        case _:
+            raise ValueError(f"Unknown type given: {ccd_type}")
+
+    # Keeping track of blockcount for summarization, regardless of type
+    if node.blockcount != -1:
+        blockcount_map[leaf_clade].append(node.blockcount)
+    # Adding the branch length to the branch_length_map
+    branch_lengths_map[leaf_clade].append(node.dist)
+    return blockcount_map, branch_lengths_map
 
 
 def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict, blockcount_map: dict,
