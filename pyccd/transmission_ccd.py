@@ -6,11 +6,25 @@ import random
 import warnings
 from collections import defaultdict
 from dataclasses import dataclass
+from enum import Enum
 from functools import total_ordering
 
 import numpy as np
 
 from pyccd.read_nexus import read_nexus_trees
+
+
+class TypeCCD(Enum):
+    """
+    Enum representing different types of CCD.
+
+    Attributes:
+        BLOCKS: Represents the "Blocks" mode, whether or not there is a block evenet.
+        ANCESTRY: Represents the "Ancestry" mode for processing transmission ancestry.
+    """
+    BLOCKS = "Blocks"
+    ANCESTRY = "Ancestry"
+    # able to add more in the future
 
 
 @total_ordering
@@ -40,7 +54,7 @@ class BaseClade:
 
 
 @dataclass(frozen=True)
-class TransmissionClade(BaseClade):
+class TransmissionBlockClade(BaseClade):
     """
     Clade with a flag indicating whether a transmission block (event) occurred on the edge.
 
@@ -50,18 +64,18 @@ class TransmissionClade(BaseClade):
     has_block: bool
 
 
-# @dataclass(frozen=True)
-# class SupportClade(BaseClade):
-#     """
-#     Clade with a support value (e.g., posterior or bootstrap probability).
-#
-#     Attributes:
-#         support (float): Confidence value assigned to this clade.
-#     """
-#     support: float
+@dataclass(frozen=True)
+class TransmissionAncestryClade(BaseClade):
+    """
+    Clade with transmission ancestor, i.e. who infected this clade.
+
+    Attributes:
+        transm_ancest (str): Transmission ancestor
+    """
+    transm_ancest: str
 
 
-def get_transmission_maps(trees: list) -> tuple:
+def get_transmission_maps(trees: list, type_str: str = "Blocks") -> tuple:
     """
     Extracts all the relevant information from a list of ete3.Tree objects.
     The maps m1 and m2 are used as in the Larget approach for CCD1.
@@ -75,6 +89,13 @@ def get_transmission_maps(trees: list) -> tuple:
               blockcount_map (Blockcount counts), branch_lengths_map (Branch lengths)
     :rtype: tuple
     """
+    try:
+        # Converting type to an enum if possible
+        ccd_type = TypeCCD(type_str)
+    except ValueError as e:
+        raise ValueError(f"Type '{type_str}' not recognized. "
+                         f"Expected one of: {', '.join([item.value for item in TypeCCD])}") from e
+
     m1 = defaultdict(int)  # map for each clade how often it got sampled
     m2 = defaultdict(int)  # map for each (c1,c2) clade how often this specific relation got sampled
 
@@ -93,19 +114,28 @@ def get_transmission_maps(trees: list) -> tuple:
             c1_leafs = {int(leaf.name) for leaf in node.children[1]}
             parent_clade_set = frozenset(sorted(c0_leafs.union(c1_leafs)))
 
-            if node.blockcount == -1:
-                parent_clade = TransmissionClade(parent_clade_set, False)
-            else:
-                parent_clade = TransmissionClade(parent_clade_set, True)
-                blockcount_map[parent_clade].append(node.blockcount)
+            match ccd_type:
+                case TypeCCD.BLOCKS:
+                    has_block = node.blockcount != -1
+                    parent_clade = TransmissionBlockClade(parent_clade_set, has_block)
+                    child0_clade = TransmissionBlockClade(frozenset(c0_leafs),
+                                                          node.children[0].blockcount != -1)
+                    child1_clade = TransmissionBlockClade(frozenset(c1_leafs),
+                                                          node.children[1].blockcount != -1)
+                    if has_block:
+                        blockcount_map[parent_clade].append(node.blockcount)
+                case TypeCCD.ANCESTRY:
+                    parent_clade = TransmissionAncestryClade(parent_clade_set, node.transm_ancest)
+                    child0_clade = TransmissionAncestryClade(frozenset(c0_leafs),
+                                                             node.children[0].transm_ancest)
+                    child1_clade = TransmissionAncestryClade(frozenset(c1_leafs),
+                                                             node.children[1].transm_ancest)
+                case _:
+                    raise ValueError(f"Unknown type given: {ccd_type}")
 
             # adding distance of parent clade to map of branch lengths
             branch_lengths_map[parent_clade].append(node.dist)
-
             m1[parent_clade] += 1
-
-            child0_clade = TransmissionClade(frozenset(c0_leafs), node.children[0].blockcount != -1)
-            child1_clade = TransmissionClade(frozenset(c1_leafs), node.children[1].blockcount != -1)
 
             # in m2 the split clade with the lower int for taxa is entered first
             if min(c0_leafs) < min(c1_leafs):
@@ -116,13 +146,21 @@ def get_transmission_maps(trees: list) -> tuple:
             assert node.is_leaf(), "Should be a leaf node!"
             # leaf node for which we need to add the blockcount to the blockcount_map
 
-            leaf_clade = TransmissionClade(frozenset({int(node.name)}), (node.blockcount != -1))
+            match ccd_type:
+                case TypeCCD.BLOCKS:
+                    leaf_clade = TransmissionBlockClade(frozenset({int(node.name)}),
+                                                        (node.blockcount != -1))
+                    # if the clade has a block we need to keep track of the blockcount for summaries
+                    if node.blockcount != -1:
+                        blockcount_map[leaf_clade].append(node.blockcount)
+
+                case TypeCCD.ANCESTRY:
+                    leaf_clade = TransmissionAncestryClade(frozenset({int(node.name)}),
+                                                           node.transm_ancest)
+                case _:
+                    raise ValueError(f"Unknown type given: {ccd_type}")
             # adding branch length of the leaf node to the dict
             branch_lengths_map[leaf_clade].append(node.dist)
-
-            # if the clade has a block we need to keep track of the blockcount for summaries
-            if node.blockcount != -1:
-                blockcount_map[leaf_clade].append(node.blockcount)
 
     return m1, m2, blockcount_map, branch_lengths_map
 
@@ -201,7 +239,7 @@ def recursive_nwk_split_dict(clade, output, blockcount_map, branch_lengths_map):
     Currently, it annotates the median blockcount if a block is present.
 
     :param clade: The clade to generate the Newick string for.
-    :type clade: TransmissionClade
+    :type clade: TransmissionBlockClade
     :param output: A dictionary containing the child clades for each parent.
                    As computed by the _build_tree_dirct_from_clade_splits function.
     :type output: dict
