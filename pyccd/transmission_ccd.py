@@ -269,7 +269,7 @@ def _build_tree_dict_from_clade_splits(root_clade: BaseClade, seen_resolved_clad
 
 
 def transmission_ccd_map_nexus(input_trees_file: str, output_tree_file: str,
-                               overwrite: bool = False, burnIn: float = 0):
+                               overwrite: bool = False, burn_in: float = 0):
     """
     Todo: weird because it does everything in one go, maybe rename and use in conjuction with all
     possible ccds as an interface just to get the MAP tree?
@@ -282,8 +282,8 @@ def transmission_ccd_map_nexus(input_trees_file: str, output_tree_file: str,
     :type output_tree_file: str
     :param overwrite: If true, overwrite existing tCCD-MAP trees
     :type overwrite: bool
-    :param burnIn: Value between 0 and 1, defining how many trees to discard as burn-in
-    :type burnIn: float
+    :param burn_in: Value between 0 and 1, defining how many trees to discard as burn-in
+    :type burn_in: float
     :return: None
     """
     if os.path.exists(output_tree_file):
@@ -294,14 +294,14 @@ def transmission_ccd_map_nexus(input_trees_file: str, output_tree_file: str,
     if not os.path.exists(input_trees_file):
         raise FileNotFoundError(f"Input trees {input_trees_file} not found.")
 
-    if not 0 <= burnIn < 1:
+    if not 0 <= burn_in < 1:
         raise ValueError("Burnin should be a number between 0 and 1, representing the proportion "
                          "of trees to delete at the beginning of the file.")
 
     trees = read_nexus_trees(input_trees_file, breath_trees=True)
-    trees = trees[int(burnIn * len(trees)):]  # deleting burnIn from trees
+    trees = trees[int(burn_in * len(trees)):]  # deleting burn_in from trees
     if len(trees) < 1:
-        raise ValueError("Treeset is empty after burnIn removal... reduce burning or check file.")
+        raise ValueError("Treeset is empty after burn_in removal... reduce burning or check file.")
 
     m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees)
     newick_map = get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map, branch_lengths_map)
