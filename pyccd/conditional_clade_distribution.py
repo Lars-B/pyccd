@@ -28,7 +28,6 @@ def get_clades(tree):
 
 
 def get_maps(trees):
-
     m1 = defaultdict(int)  # map for each clade how often it got sampled
     m2 = defaultdict(int)  # map for each (c1,c2) clade how often this specific relation got sampled
     uniques = {}
@@ -74,32 +73,14 @@ def get_tree_probability(tree, m1, m2, use_log=False):
                 c1_leafs.add(int(leaf.name))
             parent_clade = frozenset(sorted(c0_leafs.union(c1_leafs)))
             if m1[parent_clade] != 0:
-                # if min(c0_leafs) < min(c1_leafs):
-                #     if use_log:
-                #         probability += np.log(
-                #                        m2[(parent_clade, frozenset(c0_leafs))] / m1[parent_clade])
-                #     else:
-                #         probability *= (Decimal(m2[(parent_clade, frozenset(c0_leafs))]) /
-                #                         Decimal(m1[parent_clade]))
-                # else:
-                #     if use_log:
-                #         probability += np.log(m2[(parent_clade, frozenset(c1_leafs))] /
-                #                               m1[parent_clade])
-                #     else:
-                #         probability *= (Decimal(m2[(parent_clade, frozenset(c1_leafs))]) /
-                #                         Decimal(m1[parent_clade]))
                 leaf_set = frozenset(c0_leafs) if min(c0_leafs) < min(c1_leafs) \
-                                                else frozenset(c1_leafs)
+                    else frozenset(c1_leafs)
                 m2_value = m2[(parent_clade, leaf_set)]
-                m1_value = m1[(parent_clade)]
+                m1_value = m1[parent_clade]
                 if use_log:
                     probability += log(m2_value / m1_value)
                 else:
                     probability *= Decimal(m2_value) / Decimal(m1_value)
-        # if probability == 0:
-        #     return 0
-    # if use_log:
-    #     return float(probability-1)
     return float(probability)
 
 
@@ -176,24 +157,24 @@ def get_tree_from_list_of_splits(splits):
         node = cur_t.search_nodes(name=",".join([str(i) for i in sorted(parent)]))[0]
         child2 = parent.difference(child1)
         if len(child1) == 1:
-            node.add_child(name=",".join([str(i) for i in sorted(child1)]), support=n_taxa-1)
+            node.add_child(name=",".join([str(i) for i in sorted(child1)]), support=n_taxa - 1)
         else:
-            node.add_child(name= ",".join([str(i) for i in sorted(child1)]), support=dist)
-            dist +=1
+            node.add_child(name=",".join([str(i) for i in sorted(child1)]), support=dist)
+            dist += 1
         if len(child2) == 1:
-            node.add_child(name=",".join([str(i) for i in sorted(child2)]), support=n_taxa-1)
+            node.add_child(name=",".join([str(i) for i in sorted(child2)]), support=n_taxa - 1)
         else:
-            node.add_child(name= ",".join([str(i) for i in sorted(child2)]), support=dist)
-            dist +=1
+            node.add_child(name=",".join([str(i) for i in sorted(child2)]), support=dist)
+            dist += 1
         # IF the children nodes have 2 taxa the correspoinding leafs need to be added here
         if len(child1) == 2:
             node = cur_t.search_nodes(name=",".join([str(i) for i in sorted(child1)]))[0]
-            node.add_child(name=list(sorted(child1))[0], support=n_taxa-1)
-            node.add_child(name=list(sorted(child1))[1], support=n_taxa-1)
+            node.add_child(name=list(sorted(child1))[0], support=n_taxa - 1)
+            node.add_child(name=list(sorted(child1))[1], support=n_taxa - 1)
         if len(child2) == 2:
             node = cur_t.search_nodes(name=",".join([str(i) for i in sorted(child2)]))[0]
-            node.add_child(name=list(sorted(child2))[0], support=n_taxa-1)
-            node.add_child(name=list(sorted(child2))[1], support=n_taxa-1)
+            node.add_child(name=list(sorted(child2))[0], support=n_taxa - 1)
+            node.add_child(name=list(sorted(child2))[1], support=n_taxa - 1)
 
     # setting the node distances to ranks, no meaning just to have a ranked tree
     for node in cur_t.iter_descendants("postorder"):
@@ -203,6 +184,7 @@ def get_tree_from_list_of_splits(splits):
     return cur_t.write(format=5)
 
 
+# function to add a single tree to the maps m1 and m2
 # def add_centroid(centroid, m1, m2):
 #     for node in centroid.etree.traverse("levelorder"):
 #         if len(node) > 2:
@@ -247,7 +229,7 @@ def sample_tree_from_ccd(m1, m2, n=1):
             possible_splits = [(list(i), m2[i]) for i in m2 if list(i)[0] == cur_clade]
 
             cur_sum = m1[cur_clade]  # same as sum([i[1] for i in next_splits])
-            cur_p = [i[1]/cur_sum for i in possible_splits]
+            cur_p = [i[1] / cur_sum for i in possible_splits]
 
             chosen_split = random.choice([i[0][1] for i in possible_splits], p=cur_p)
             remainder_split = cur_clade.difference(chosen_split)
@@ -262,7 +244,7 @@ def sample_tree_from_ccd(m1, m2, n=1):
 
 def sample_logprob_from_ccd(m1, m2, n=1):
     # todo this is fairly inefficient for some reason,
-    #  may need change in the future, same for the other sampling funciton
+    #  may need change in the future, same for the other sampling function
     # sample n trees from the CCD distribution, relative to its clade probabilities in each step
     # samples = []
     probabilities = []
@@ -278,7 +260,7 @@ def sample_logprob_from_ccd(m1, m2, n=1):
             possible_splits = [(list(i), m2[i]) for i in m2 if list(i)[0] == cur_clade]
 
             cur_sum = m1[cur_clade]  # same as sum([i[1] for i in next_splits])
-            cur_p = [i[1]/cur_sum for i in possible_splits]
+            cur_p = [i[1] / cur_sum for i in possible_splits]
 
             chosen_split = random.choice([i[0][1] for i in possible_splits], p=cur_p)
             remainder_split = cur_clade.difference(chosen_split)
@@ -301,11 +283,11 @@ def calc_entropy(m1, m2):
         h_dict[c] = 0
         c_children = [k for k in m2.keys() if k[0] == c]
         for _, child in c_children:
-            p = m2[(c, child)]/m1[c]
+            p = m2[(c, child)] / m1[c]
             # if len(c) == 3:
             #     # if c has only 3 taxa we don't need to go for childrens entropy
             #     h_dict[c] -= p * np.log(p)
             # else:
-                # if c has more than 3 taxa use formula
+            # if c has more than 3 taxa use formula
             h_dict[c] -= p * (log(p) - h_dict[child] - h_dict[c.difference(child)])
     return h_dict[max(m1.keys())]
