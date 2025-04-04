@@ -287,6 +287,7 @@ def recursive_nwk_split_dict(clade, output, blockcount_map, branch_lengths_map):
     """
     Recursively generates a Newick string for the given clade.
     Currently, it annotates the median blockcount if a block is present.
+    If the given clade is a TransmissionAncestryClade it also annotates that.
 
     :param clade: The clade to generate the Newick string for.
     :type clade: TransmissionBlockClade
