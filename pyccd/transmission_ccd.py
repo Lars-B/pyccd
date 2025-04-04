@@ -3,14 +3,12 @@ This module contains all the functions relevant for creating transmission CCDs.
 """
 import os.path
 import random
-import re
 import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import total_ordering
 
 import numpy as np
-from docutils.io import InputError
 
 from pyccd.read_nexus import read_nexus_trees
 
@@ -61,74 +59,6 @@ class TransmissionClade(BaseClade):
 #         support (float): Confidence value assigned to this clade.
 #     """
 #     support: float
-
-
-def get_transmission_clades(tree, blockcountmap):
-    treestr = tree.write(format=8)
-    clades = set()
-    if not (treestr[0] == '(' and treestr[-2] == ')' and treestr[-1] == ';'):
-        # todo the above second statement is not true: there might be root info that we can ignore
-        raise InputError("Invalid tree string given! (no ';' at the end)")
-
-    # Adding leafs separately
-    leafnamepattern = r"%(-?\d+/-?\d+)%"
-    # the above regex assumes that the taxa are integers and internal nodes do not have an
-    # interger in the first part of the block.
-    matches = re.findall(leafnamepattern, treestr)
-    for m in matches:
-        taxa, blockcount = map(int, m.split("/"))
-        if blockcount == -1:
-            leafclade = TransmissionClade(frozenset({taxa}), False)
-        else:
-            leafclade = TransmissionClade(frozenset({taxa}), True)
-            if leafclade in blockcountmap:
-                blockcountmap[leafclade] += blockcount
-            else:
-                blockcountmap[leafclade] = blockcount
-        clades.add(leafclade)
-
-    leafreplacementpattern = r"%(-?\d+)/-?\d+%"
-
-    def replace_match(match):
-        return match.group(1)  # Extract leafname from above pattern (the part before the slash)
-
-    # Replace all matches with integer1
-    treestr = re.sub(leafreplacementpattern, replace_match, treestr)
-
-    # Adding all non leaf clades (except the root)
-    opend = []
-    re_brackets_internals = re.compile(r"\(|\)|%/-?\d+%")
-    internalnodenamepattern = re.compile(r"%/-?\d+%")
-    for i in range(1, len(treestr) - 2):
-        if treestr[i] == '(':
-            opend.append(i)
-        elif treestr[i] == ')':
-            if not opend:
-                raise InputError("Invalid tree string given! (to many ')')")
-            # current_string = treestr[opend[-1]:i]
-
-            match_interenalnodename = re.search(internalnodenamepattern, treestr[i + 1:])
-            if not match_interenalnodename:
-                raise ValueError("Something went wrong looking for the next internal nodes name")
-            blockcount = int(
-                match_interenalnodename.group(0).replace("%", "").split("/")[1]
-            )
-            current_clade_set = frozenset(
-                re.sub(re_brackets_internals, "", treestr[opend[-1]:i]).split(",")
-            )
-            if blockcount == -1:
-                curclade = TransmissionClade(current_clade_set, False)
-            else:
-                curclade = TransmissionClade(current_clade_set, True)
-                if curclade in blockcountmap:
-                    blockcountmap[curclade].append(blockcount)
-                else:
-                    blockcountmap[curclade] = [blockcount]
-            clades.add(curclade)
-            del opend[-1]
-    if opend:
-        raise InputError("Invalid tree string given! (to many '(')")
-    return clades
 
 
 def get_transmission_maps(trees: list) -> tuple:
