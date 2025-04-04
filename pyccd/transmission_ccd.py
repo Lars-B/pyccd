@@ -152,14 +152,11 @@ def _add_internal_clade(node, ccd_type, blockcount_map: dict, branch_lengths_map
 
     match ccd_type:
         case TypeCCD.BLOCKS:
-            has_block = node.blockcount != -1
-            parent_clade = TransmissionBlockClade(parent_clade_set, has_block)
+            parent_clade = TransmissionBlockClade(parent_clade_set, node.blockcount != -1)
             child0_clade = TransmissionBlockClade(frozenset(c0_leafs),
                                                   node.children[0].blockcount != -1)
             child1_clade = TransmissionBlockClade(frozenset(c1_leafs),
                                                   node.children[1].blockcount != -1)
-            if has_block:
-                blockcount_map[parent_clade].append(node.blockcount)
         case TypeCCD.ANCESTRY:
             parent_clade = TransmissionAncestryClade(parent_clade_set, node.transm_ancest)
             child0_clade = TransmissionAncestryClade(frozenset(c0_leafs),
@@ -168,6 +165,10 @@ def _add_internal_clade(node, ccd_type, blockcount_map: dict, branch_lengths_map
                                                      node.children[1].transm_ancest)
         case _:
             raise ValueError(f"Unknown type given: {ccd_type}")
+
+    # Keeping track of blockcounts if not -1
+    if node.blockcount != -1:
+        blockcount_map[parent_clade].append(node.blockcount)
 
     # adding distance of parent clade to map of branch lengths
     branch_lengths_map[parent_clade].append(node.dist)
@@ -303,14 +304,21 @@ def recursive_nwk_split_dict(clade, output, blockcount_map, branch_lengths_map):
     if len(clade) == 1:
         # Base case for leaf node
         return (f"{next(iter(clade.clade))}"
-                f"[&blockcount={np.median(blockcount_map[clade]) if clade.has_block else -1}]"
+                f"[&blockcount="
+                f"{np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
+                f"&transmission.ancestor="
+                f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
+                f"]"
                 f":{np.mean(branch_lengths_map[clade])}")
     # recursive case for internal node
     return (f"({recursive_nwk_split_dict(output[clade][0], output,
                                          blockcount_map, branch_lengths_map)},"
             f"{recursive_nwk_split_dict(output[clade][1], output,
                                         blockcount_map, branch_lengths_map)})"
-            f"[&blockcount={np.median(blockcount_map[clade]) if clade.has_block else -1}]"
+            f"[&blockcount={np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
+            f"&transmission.ancestor="
+            f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
+            f"]"
             f":{np.mean(branch_lengths_map[clade])}")
 
 
