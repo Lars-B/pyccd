@@ -13,5 +13,7 @@ This is the documentation for the python implementation of conditional clade dis
    :maxdepth: 2
    :caption: Contents:
 
-   tCCD
+   readTrees
+   labelTransmissionTrees
+   transmissionCCD
 

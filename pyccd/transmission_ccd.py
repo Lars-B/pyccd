@@ -268,11 +268,23 @@ def _build_tree_dict_from_clade_splits(root_clade: BaseClade, seen_resolved_clad
     return output
 
 
-def transmission_ccd_map_nexus(input_trees_file, output_tree_file, overwrite=False, burnin=0):
+def transmission_ccd_map_nexus(input_trees_file: str, output_tree_file: str,
+                               overwrite: bool = False, burnIn: float = 0):
     """
-    todo weird because it does everything in one go, maybe rename and use in conjuction with all
-        possible ccds as an interface just to get the MAP tree?
+    Todo: weird because it does everything in one go, maybe rename and use in conjuction with all
+    possible ccds as an interface just to get the MAP tree?
+
     Takes input trees file and writes a tCCD1-MAP tree to the output file in Nexus format.
+
+    :param input_trees_file: Path to the input trees file
+    :type input_trees_file: str
+    :param output_tree_file: Path to the output trees file
+    :type output_tree_file: str
+    :param overwrite: If true, overwrite existing tCCD-MAP trees
+    :type overwrite: bool
+    :param burnIn: Value between 0 and 1, defining how many trees to discard as burn-in
+    :type burnIn: float
+    :return: None
     """
     if os.path.exists(output_tree_file):
         if not overwrite:
@@ -282,14 +294,14 @@ def transmission_ccd_map_nexus(input_trees_file, output_tree_file, overwrite=Fal
     if not os.path.exists(input_trees_file):
         raise FileNotFoundError(f"Input trees {input_trees_file} not found.")
 
-    if not 0 <= burnin < 1:
+    if not 0 <= burnIn < 1:
         raise ValueError("Burnin should be a number between 0 and 1, representing the proportion "
                          "of trees to delete at the beginning of the file.")
 
     trees = read_nexus_trees(input_trees_file, breath_trees=True)
-    trees = trees[int(burnin * len(trees)):]  # deleting burnin from trees
+    trees = trees[int(burnIn * len(trees)):]  # deleting burnIn from trees
     if len(trees) < 1:
-        raise ValueError("Treeset is empty after burnin removal... reduce burning or check file.")
+        raise ValueError("Treeset is empty after burnIn removal... reduce burning or check file.")
 
     m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees)
     newick_map = get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map, branch_lengths_map)
