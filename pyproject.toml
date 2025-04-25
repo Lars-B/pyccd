@@ -6,12 +6,13 @@ authors = [
 ]
 description = "A python package for conditional clade distributions (CCD)"
 readme = "README.md"
-requires-python = ">=3.8"
+license = "LGPL-3.0-or-later"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 
 [project.urls]
-Homepage = "https://github.com/Lars-B/CCDpy"
-Issues = "https://github.com/Lars-B/CCDpy/issues"
+Homepage = "https://github.com/Lars-B/pyccd"
+Issues = "https://github.com/Lars-B/pyccd/issues"
