@@ -3,7 +3,7 @@ Tests for the basic CCD1, currently largely unused because this was
 ported from the tetres pacakge and misses test fixtures.
 """
 from pathlib import Path
-from pyccd.conditional_clade_distribution import get_maps, get_tree_probability
+from pyccd.ccd import get_maps, get_tree_probability
 from pyccd.read_nexus import read_nexus_trees
 
 
@@ -17,7 +17,7 @@ def test_get_maps():
     p = get_tree_probability(trees[1], m1, m2)
     assert p > 0.0, "Failure in reading the trees and calculating basic CCD probability"
 
-# If I want to make these work i need to port the correct tree files from tetres
+# todo If I want to make these work i need to port the correct tree files from tetres
 # def test_get_tree_probability(ten_taxa_multichain):
 #     m1, m2, u = get_maps(ten_taxa_multichain[0].trees)
 #     p = get_tree_probability(ten_taxa_multichain[0].trees[1], m1, m2)
