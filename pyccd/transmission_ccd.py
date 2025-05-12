@@ -312,22 +312,32 @@ def recursive_nwk_split_dict(clade, output, blockcount_map, branch_lengths_map) 
                 f"]"
                 f":{np.mean(branch_lengths_map[clade])}")
     # recursive case for internal node
-    return (f"("
-            f"{
-                recursive_nwk_split_dict(
-                    output[clade][0],
-                    output,
-                    blockcount_map, branch_lengths_map
-                )
-            }"
-            f","
-            f"{recursive_nwk_split_dict(output[clade][1], output,
-                                        blockcount_map, branch_lengths_map)})"
-            f"[&blockcount={np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
-            f"&transmission.ancestor="
-            f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
-            f"]"
-            f":{np.mean(branch_lengths_map[clade])}")
+    # return (f"("
+    #         f"{
+    #             recursive_nwk_split_dict(
+    #                 output[clade][0],
+    #                 output,
+    #                 blockcount_map, branch_lengths_map
+    #             )
+    #         }"
+    #         f","
+    #         f"{recursive_nwk_split_dict(output[clade][1], output,
+    #                                     blockcount_map, branch_lengths_map)})"
+    #         f"[&blockcount={np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
+    #         f"&transmission.ancestor="
+    #         f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
+    #         f"]"
+    #         f":{np.mean(branch_lengths_map[clade])}")
+    return (
+        "("
+        f"{recursive_nwk_split_dict(output[clade][0], output, blockcount_map, branch_lengths_map)},"
+        f"{recursive_nwk_split_dict(output[clade][1], output, blockcount_map, branch_lengths_map)})"
+        f"[&blockcount={np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
+        f"&transmission.ancestor="
+        f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
+        f"]:"
+        f"{np.mean(branch_lengths_map[clade])}"
+    )
 
 
 def _build_tree_dict_from_clade_splits(root_clade: BaseClade, seen_resolved_clades: dict) -> dict:
