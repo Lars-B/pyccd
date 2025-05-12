@@ -1,5 +1,6 @@
 """
 WIP.
+Todo make this a CLI tool ?!?
 This module contains easy to use interface functions, minimal input to get a desired output.
 """
 import os
@@ -12,7 +13,7 @@ def transmission_ccd_map_nexus(input_trees_file: str, output_tree_file: str,
                                overwrite: bool = False, burn_in: float = 0):
     """
     Todo: weird because it does everything in one go, maybe rename and use in conjuction with all
-    possible ccds as an interface just to get the MAP tree?
+     possible ccds as an interface just to get the MAP tree?
 
     Takes input trees file and writes a tCCD1-MAP tree to the output file in Nexus format.
 

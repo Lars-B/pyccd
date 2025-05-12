@@ -1,5 +1,6 @@
-from pyccd.read_nexus import *
 from pathlib import Path
+
+from pyccd.read_nexus import read_nexus_trees
 
 
 def test_read_transmission_nexus():
