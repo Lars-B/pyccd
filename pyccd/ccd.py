@@ -1,3 +1,6 @@
+"""
+Module for the Conditional Clade Distribution implementation using maps for clades and clade splits.
+"""
 import re
 from collections import defaultdict
 from decimal import Decimal
@@ -6,7 +9,13 @@ from numpy import random, log
 from docutils.io import InputError
 
 
-def get_clades(tree):
+def get_clades(tree: ete3.Tree) -> set[frozenset[str]]:
+    """
+    Get all clades of a given tree
+
+    :param tree: an ete3 input tree
+    :return: set of clades
+    """
     treestr = tree.write(format=9)
     clades = set()
     if not (treestr[0] == '(' and treestr[-2] == ')' and treestr[-1] == ';'):
@@ -27,7 +36,14 @@ def get_clades(tree):
     return clades
 
 
-def get_maps(trees):
+def get_maps(trees: list[ete3.Tree]) \
+        -> tuple[defaultdict[str, int], defaultdict[str, int], dict[int, list]]:
+    """
+    From a list of trees, return relevant CCD maps from clades/clade splits to counts.
+
+    :param trees: list of ete3 input trees
+    :return: maps for CCDs, clades to occurrences (m1), clades to clade splits (m2), unique trees
+    """
     m1 = defaultdict(int)  # map for each clade how often it got sampled
     m2 = defaultdict(int)  # map for each (c1,c2) clade how often this specific relation got sampled
     uniques = {}
@@ -60,6 +76,15 @@ def get_maps(trees):
 
 
 def get_tree_probability(tree, m1, m2, use_log=False):
+    """
+    Calculate the probability of a tree given the occurrences of its clade and clade splits.
+
+    :param tree: input tree
+    :param m1: CCD map for clades
+    :param m2: CCD map for clade splits
+    :param use_log: Whether to use log transform for probabilities
+    :return: Probability of a tree
+    """
     # getcontext().prec = 20
     probability = 0 if use_log else 1
     for node in tree.traverse("levelorder"):
@@ -85,6 +110,14 @@ def get_tree_probability(tree, m1, m2, use_log=False):
 
 
 def get_ccd_tree_bottom_up(m1, m2):
+    """
+    From the maps of clade counts and clade split counts perform a dynamic program to calculate
+    the CCD MAP tree.
+
+    :param m1: Map for clade counts
+    :param m2: Map for clade split counts
+    :return: the CCD MAP tree
+    """
     # initialize with root clade, empty tree, probability 1
     # working_list = [([max(m1.keys())], [], 1)]
 
@@ -147,7 +180,13 @@ def get_ccd_tree_bottom_up(m1, m2):
     return get_tree_from_list_of_splits(output)
 
 
-def get_tree_from_list_of_splits(splits):
+def get_tree_from_list_of_splits(splits) -> ete3.Tree:
+    """
+    From a list of splits create the corresponding tree
+
+    :param splits: list of splits
+    :return: tree that fits the input splits
+    """
     # this is dependent on the current structure of how the greedy list of splits is created!
     n_taxa = len(splits[0][0])
     dist = 1
@@ -215,7 +254,16 @@ def get_tree_from_list_of_splits(splits):
 #     return m1, m2
 
 
-def sample_tree_from_ccd(m1, m2, n=1):
+def sample_tree_from_ccd(m1, m2, n=1) -> list[ete3.Tree]:
+    """
+    Given a CCD with m1 and m2, this function samples n trees proportional to
+    their probabilities from this CCD.
+
+    :param m1: Count of clades
+    :param m2: Count of clade splits
+    :param n: number of trees to sample
+    :return: List of sampled trees
+    """
     # sample n trees from the CCD distribution, relative to its clade probabilities in each step
     samples = []
 
@@ -242,41 +290,49 @@ def sample_tree_from_ccd(m1, m2, n=1):
     return samples
 
 
-def sample_logprob_from_ccd(m1, m2, n=1):
-    # todo this is fairly inefficient for some reason,
-    #  may need change in the future, same for the other sampling function
-    # sample n trees from the CCD distribution, relative to its clade probabilities in each step
-    # samples = []
-    probabilities = []
-
-    for _ in range(n):
-        # cur_sample = []
-        cur_prob = 0
-        # cur_sample.append(max(m1))
-
-        working_list = [max(m1)]
-        while working_list:
-            cur_clade = working_list.pop()
-            possible_splits = [(list(i), m2[i]) for i in m2 if list(i)[0] == cur_clade]
-
-            cur_sum = m1[cur_clade]  # same as sum([i[1] for i in next_splits])
-            cur_p = [i[1] / cur_sum for i in possible_splits]
-
-            chosen_split = random.choice([i[0][1] for i in possible_splits], p=cur_p)
-            remainder_split = cur_clade.difference(chosen_split)
-            if len(chosen_split) > 2:
-                working_list.append((chosen_split))
-            if len(remainder_split) > 2:
-                working_list.append(remainder_split)
-            # cur_sample.append((cur_clade, chosen_split))
-            cur_prob += log(m2[(cur_clade, chosen_split)] / m1[cur_clade])
-
-        # samples.append(get_tree_from_list_of_splits(cur_sample))
-        probabilities.append(cur_prob)
-    return probabilities
+# def sample_logprob_from_ccd(m1, m2, n=1):
+#     # todo this is fairly inefficient for some reason,
+#     #  may need change in the future, same for the other sampling function
+#     # sample n trees from the CCD distribution, relative to its clade probabilities in each step
+#     # samples = []
+#     probabilities = []
+#
+#     for _ in range(n):
+#         # cur_sample = []
+#         cur_prob = 0
+#         # cur_sample.append(max(m1))
+#
+#         working_list = [max(m1)]
+#         while working_list:
+#             cur_clade = working_list.pop()
+#             possible_splits = [(list(i), m2[i]) for i in m2 if list(i)[0] == cur_clade]
+#
+#             cur_sum = m1[cur_clade]  # same as sum([i[1] for i in next_splits])
+#             cur_p = [i[1] / cur_sum for i in possible_splits]
+#
+#             chosen_split = random.choice([i[0][1] for i in possible_splits], p=cur_p)
+#             remainder_split = cur_clade.difference(chosen_split)
+#             if len(chosen_split) > 2:
+#                 working_list.append((chosen_split))
+#             if len(remainder_split) > 2:
+#                 working_list.append(remainder_split)
+#             # cur_sample.append((cur_clade, chosen_split))
+#             cur_prob += log(m2[(cur_clade, chosen_split)] / m1[cur_clade])
+#
+#         # samples.append(get_tree_from_list_of_splits(cur_sample))
+#         probabilities.append(cur_prob)
+#     return probabilities
 
 
 def calc_entropy(m1, m2):
+    """
+    For a given CCD via the maps m1 and m2, this calculates the entropy for it using the
+    fromular from Lewis et al.
+
+    :param m1: Count of clades
+    :param m2: Count of clade splits
+    :return: Entropy as a float
+    """
     h_dict = defaultdict(lambda: 0)
     for c in sorted(m1.keys(), reverse=False, key=len):
         # iterate over all clades, from small to large
