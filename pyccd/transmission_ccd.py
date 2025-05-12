@@ -283,7 +283,7 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict, blockcount_map: dict
     return recursive_nwk_split_dict(root_clade, output, blockcount_map, branch_lengths_map)
 
 
-def recursive_nwk_split_dict(clade, output, blockcount_map, branch_lengths_map):
+def recursive_nwk_split_dict(clade, output, blockcount_map, branch_lengths_map) -> str:
     """
     Recursively generates a Newick string for the given clade.
     Currently, it annotates the median blockcount if a block is present.
@@ -312,8 +312,15 @@ def recursive_nwk_split_dict(clade, output, blockcount_map, branch_lengths_map):
                 f"]"
                 f":{np.mean(branch_lengths_map[clade])}")
     # recursive case for internal node
-    return (f"({recursive_nwk_split_dict(output[clade][0], output,
-                                         blockcount_map, branch_lengths_map)},"
+    return (f"("
+            f"{
+                recursive_nwk_split_dict(
+                    output[clade][0],
+                    output,
+                    blockcount_map, branch_lengths_map
+                )
+            }"
+            f","
             f"{recursive_nwk_split_dict(output[clade][1], output,
                                         blockcount_map, branch_lengths_map)})"
             f"[&blockcount={np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
