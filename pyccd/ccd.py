@@ -6,7 +6,6 @@ from collections import defaultdict
 from decimal import Decimal
 import ete3
 from numpy import random, log
-from docutils.io import InputError
 
 
 def get_clades(tree: ete3.Tree) -> set[frozenset[str]]:
@@ -19,7 +18,7 @@ def get_clades(tree: ete3.Tree) -> set[frozenset[str]]:
     treestr = tree.write(format=9)
     clades = set()
     if not (treestr[0] == '(' and treestr[-2] == ')' and treestr[-1] == ';'):
-        raise InputError("Invalid tree string given! (no ';' at the end)")
+        raise ValueError("Invalid tree string given! (no ';' at the end)")
     opend = []
     re_brackets = re.compile(r"\(|\)")
     for i in range(1, len(treestr) - 2):
@@ -27,12 +26,12 @@ def get_clades(tree: ete3.Tree) -> set[frozenset[str]]:
             opend.append(i)
         elif treestr[i] == ')':
             if not opend:
-                raise InputError("Invalid tree string given! (to many ')')")
+                raise ValueError("Invalid tree string given! (to many ')')")
             cur = treestr[opend[-1]:i]
             clades.add(frozenset(re.sub(re_brackets, '', cur).split(',')))
             del opend[-1]
     if opend:
-        raise InputError("Invalid tree string given! (to many '(')")
+        raise ValueError("Invalid tree string given! (to many '(')")
     return clades
 
 
@@ -125,8 +124,7 @@ def get_ccd_tree_bottom_up(m1, m2):
 
     all_clades = sorted(list(m1.keys()), key=len)
     for current_clade in all_clades:
-        all_splits_current = [i for i in m2 if i[0] == current_clade]
-        for split in all_splits_current:
+        for split in [i for i in m2 if i[0] == current_clade]:
             # this for loop needs to find the best split of the current parent, if any exists!
             child1 = split[1]
             child2 = split[0].difference(split[1])
@@ -150,9 +148,10 @@ def get_ccd_tree_bottom_up(m1, m2):
             #     # The current split will not lead to an improvement
             #     continue
 
-            cur_prob = m2[split] / m1[split[0]]  # Prob of current parent, given split
+            # cur_prob = m2[split] / m1[split[0]]  # Prob of current parent, given split
             # best probability of current parent with split
-            split_prob = c1_prob * c2_prob * cur_prob
+            # split_prob = c1_prob * c2_prob * cur_prob
+            split_prob = c1_prob * c2_prob * (m2[split] / m1[split[0]])
             # math.isclose instead of == for float comparison 0.1+0.2 != 0.3
             # if math.isclose(split_prob, prob) or split_prob > prob:
             if split[0] in seen_resolved_clades:
@@ -166,8 +165,9 @@ def get_ccd_tree_bottom_up(m1, m2):
                 seen_resolved_clades[split[0]] = (split_prob, child1)
 
     output = []
-    root = max(seen_resolved_clades.keys())
-    working_list = [root]
+    # root = max(seen_resolved_clades.keys())
+    # working_list = [root]
+    working_list = [max(seen_resolved_clades.keys())]
 
     while working_list:
         cur_parent = working_list.pop()
@@ -180,12 +180,12 @@ def get_ccd_tree_bottom_up(m1, m2):
     return get_tree_from_list_of_splits(output)
 
 
-def get_tree_from_list_of_splits(splits) -> ete3.Tree:
+def get_tree_from_list_of_splits(splits) -> str:
     """
-    From a list of splits create the corresponding tree
+    From a list of splits create the corresponding tree as a newick string
 
     :param splits: list of splits
-    :return: tree that fits the input splits
+    :return: newick string of tree
     """
     # this is dependent on the current structure of how the greedy list of splits is created!
     n_taxa = len(splits[0][0])
@@ -219,7 +219,6 @@ def get_tree_from_list_of_splits(splits) -> ete3.Tree:
     for node in cur_t.iter_descendants("postorder"):
         node.dist = node.support - node.up.support
 
-    # TODO output currently just a newick string
     return cur_t.write(format=5)
 
 
@@ -291,7 +290,7 @@ def sample_tree_from_ccd(m1, m2, n=1) -> list[ete3.Tree]:
 
 
 # def sample_logprob_from_ccd(m1, m2, n=1):
-#     # todo this is fairly inefficient for some reason,
+#     # NOTE: this is fairly inefficient for some reason,
 #     #  may need change in the future, same for the other sampling function
 #     # sample n trees from the CCD distribution, relative to its clade probabilities in each step
 #     # samples = []
