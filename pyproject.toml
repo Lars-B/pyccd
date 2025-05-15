@@ -6,8 +6,8 @@ build-backend = "hatchling.build"
 packages = ["src/pyccd"]
 
 [project]
-name = "CCDpy"
-version = "0.0.1"
+name = "pyccd"
+version = "0.1.0"
 authors = [
   { name="Lars Berling", email="berlinglars96@gmail.com" },
 ]
