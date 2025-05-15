@@ -1,10 +1,3 @@
-[build-system]
-requires = ["hatchling >= 1.26"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/pyccd"]
-
 [project]
 name = "pyccd"
 version = "0.1.0"
@@ -23,3 +16,13 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/Lars-B/pyccd"
 Issues = "https://github.com/Lars-B/pyccd/issues"
+
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyccd"]
+
+[project.scripts]
+pytccd = "pyccd.transmission_CLI:main"
