@@ -13,6 +13,10 @@ def main():
     """
     Command line interface to calculate a transmission CCD-MAP tree with input options.
     """
+    prelim_parser = argparse.ArgumentParser(add_help=False)
+    prelim_parser.add_argument('--overwrite', action='store_true',)
+    prelim_args, _ = prelim_parser.parse_known_args()
+
     parser = argparse.ArgumentParser(description='Transmission CCD MAP tree computation',
                                      prog='transcope')
     parser.add_argument(
@@ -20,9 +24,10 @@ def main():
         help='Input tree file path',
         required=True,
     )
-    parser.add_argument('-o', '--output-tree', nargs='?',
+    parser.add_argument('-o', '--output-tree',
                         help='Output Tree file (default: standard output)',
-                        type=argparse.FileType('w'), default=sys.stdout,
+                        type=argparse.FileType(f"{'w' if prelim_args.overwrite else 'x'}"),
+                        default=sys.stdout,
                         )
     parser.add_argument('-b', '--burn-in', nargs='?',
                         default=0.0,  # default value
@@ -38,10 +43,6 @@ def main():
 
     if not os.path.isfile(args.input_trees):
         print(f"Error: input tree file {args.input_trees} does not exist!", file=sys.stderr)
-        sys.exit(1)
-    if os.path.exists(args.output_tree.name) and not args.overwrite:
-        print("Output tree already exists. Use '--overwrite' to overwrite the file.",
-              file=sys.stderr)
         sys.exit(1)
     if not 0.0 <= args.burn_in < 1.0:
         print("Burn-in must be between 0.0 (inclusive) and 1.0 (exclusive).", file=sys.stderr)
