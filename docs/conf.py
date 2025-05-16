@@ -21,7 +21,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../'))  # Add this line if your module is in the parent directory
+sys.path.insert(0, os.path.abspath('../src'))
 
 autodoc_default_options = {
     'members': True,
@@ -34,5 +34,6 @@ autodoc_default_options = {
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+# html_theme = "classic"
 html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+# html_static_path = ['_static']
