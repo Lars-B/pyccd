@@ -5,8 +5,8 @@ import os
 import argparse
 import sys
 
-from src.pyccd.read_nexus import read_nexus_trees
-from src.pyccd.transmission_ccd import get_transmission_maps, get_transmission_ccd_tree_bottom_up
+from .read_nexus import read_nexus_trees
+from .transmission_ccd import get_transmission_maps, get_transmission_ccd_tree_bottom_up
 
 
 def main():

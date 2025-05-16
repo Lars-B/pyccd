@@ -25,4 +25,4 @@ build-backend = "hatchling.build"
 packages = ["src/pyccd"]
 
 [project.scripts]
-transcope = "pyccd.transmission_CLI:main"
+transcope = "pyccd.transcope:main"
