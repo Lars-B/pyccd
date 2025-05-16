@@ -7,6 +7,13 @@ Simple implementation of conditional clade distributions in python.
 - Add CCD0 and CCD2
 - WIP transmission tree CCDs from BREATH BEAST2 package
 
+# Usage
+
+This package provide a command line interface to compute the tCCD MAP tree.
+The tool is called `transcope` and for more information install the package and run
+```bash
+transcope --help
+```
 
 # Installation
 
