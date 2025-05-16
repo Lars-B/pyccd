@@ -1,3 +1,6 @@
+"""
+Module contains the transcope Command line interface
+"""
 import os
 import argparse
 import sys
@@ -7,6 +10,9 @@ from src.pyccd.transmission_ccd import get_transmission_maps, get_transmission_c
 
 
 def main():
+    """
+    Command line interface to calculate a transmission CCD-MAP tree with input options.
+    """
     parser = argparse.ArgumentParser(description='Transmission CCD MAP tree computation',
                                      prog='transcope')
     parser.add_argument(
@@ -24,47 +30,49 @@ def main():
                         type=float,
                         help='Burn-in proportion between 0.0 and 1.0 (default: %(default)s))'
                         )
-    parser.add_argument('-v', '--verbose', action='store_true')
-    parser.add_argument('--overwrite', action='store_true')
+    parser.add_argument('-v', '--verbose',
+                        action='store_true', help="Enable verbose status output")
+    parser.add_argument('--overwrite', action='store_true',
+                        help='Overwrite existing output file')
     args = parser.parse_args()
 
-    input_trees = args.input_trees
-    output_tree = args.output_tree
-    burn_in = args.burn_in
-    overwrite = args.overwrite
-    verbose = args.verbose
-
-    if not os.path.isfile(input_trees):
-        print(f"Error: input tree file {input_trees} does not exist!", file=sys.stderr)
+    if not os.path.isfile(args.input_trees):
+        print(f"Error: input tree file {args.input_trees} does not exist!", file=sys.stderr)
         sys.exit(1)
-    if os.path.exists(output_tree.name) and not overwrite:
+    if os.path.exists(args.output_tree.name) and not args.overwrite:
         print("Output tree already exists. Use '--overwrite' to overwrite the file.",
               file=sys.stderr)
         sys.exit(1)
-    if not 0.0 <= burn_in < 1.0:
+    if not 0.0 <= args.burn_in < 1.0:
         print("Burn-in must be between 0.0 (inclusive) and 1.0 (exclusive).", file=sys.stderr)
         sys.exit(1)
 
-    trees = read_nexus_trees(input_trees, breath_trees=True)
-    trees = trees[int(burn_in * len(trees)):]
+    if args.verbose:
+        print("Parsing input trees...", file=sys.stderr)
+    trees = read_nexus_trees(args.input_trees, breath_trees=True)
+    trees = trees[int(args.burn_in * len(trees)):]
     if len(trees) < 1:
         print("Input trees empty after burn-in removal, maybe burn-in too high?", file=sys.stderr)
         sys.exit(1)
+    if args.verbose:
+        print(f"After burn-in there are {len(trees)} trees left...", file=sys.stderr)
 
     m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees)
     newick_map = get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map, branch_lengths_map)
 
-    with open(input_trees, 'r', encoding="UTF-8") as infile:
+    if args.verbose:
+        print("Writing transmission CCD-MAP tree to file...", file=sys.stderr)
+
+    with open(args.input_trees, 'r', encoding="UTF-8") as infile:
         for line in infile:
             if line.strip().startswith("tree "):
                 break  # Stop reading when the tree section starts
-            output_tree.write(line)
+            args.output_tree.write(line)
 
-        output_tree.write(f"tree tCCD_MAP = {newick_map};\nEnd;\n")
+        args.output_tree.write(f"tree tCCD_MAP = {newick_map};\nEnd;\n")
 
-    # todo verbose needs to be used with progress etc...
-    # todo empty run of the program should either default ot print help or print a meaningful error?
-    print("Done invoking transcope.")
+    if args.verbose:
+        print("Done invoking transcope.", file=sys.stderr)
     return 0
 
 
