@@ -34,11 +34,11 @@ def label_transmission_tree(etree):
 
     # Loops over all nodes first, could probably be done more efficiently in the future
     unlabeled_nodes_list, unknown_count = _label_all_nodes(
-        etree,unlabeled_nodes_list, unknown_count
+        etree, unlabeled_nodes_list, unknown_count
     )
 
     unlabeled_nodes_list, top_infected_nodes_list = (
-        _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list,top_infected_nodes_list))
+        _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_nodes_list))
 
     unlabeled_nodes_list = _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list)
 
@@ -92,7 +92,7 @@ def _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_no
             while working_node_list:
                 working_node = working_node_list.pop()
                 if working_node.blockcount == -1:  # and not working_node.is_root():
-                    # THere is no event towards current node
+                    # There is no event towards current node
                     working_node.transm_ancest = leaf.name  # label the current node
                     if working_node in unlabeled_nodes_list:
                         unlabeled_nodes_list.remove(working_node)
@@ -103,7 +103,7 @@ def _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_no
                             # we can check if we need to add it
                             if working_node.up.blockcount == -1:
                                 # the node up has not been labeled and extends the path
-                                if not working_node.up in working_node_list:
+                                if working_node.up not in working_node_list:
                                     working_node_list.append(working_node.up)
                 # If working_node has children we need to sort those out too
                 if len(working_node.children) > 0:
@@ -114,7 +114,7 @@ def _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_no
                             if c.blockcount == -1:
                                 # adding the children that are reachable
                                 # but have not been labeled yet
-                                if not c in working_node_list:
+                                if c not in working_node_list:
                                     working_node_list.append(c)
                             elif c.blockcount == 0:
                                 # child that is infected by current label
@@ -132,7 +132,7 @@ def _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_no
 
 def _label_all_nodes(etree: ete3.Tree, unlabeled_nodes_list: List = None, unknown_count: int = 0) \
         -> \
-Tuple[List, int]:
+                Tuple[List, int]:
     """
     Labels all nodes by iterating over the entire tree.
 
