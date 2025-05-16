@@ -21,7 +21,7 @@ def main():
         required=True,
     )
     parser.add_argument('-o', '--output-tree', nargs='?',
-                        help='Output Tree file (default: %(default)s)',
+                        help='Output Tree file (default: standard output)',
                         type=argparse.FileType('w'), default=sys.stdout,
                         )
     parser.add_argument('-b', '--burn-in', nargs='?',
