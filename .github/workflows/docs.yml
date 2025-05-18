@@ -1,15 +1,15 @@
 # Simple workflow for deploying static content to GitHub Pages
 name: Deploy documentation to pages
 
-on: [push]
-#  # Runs on pushes targeting the default branch
-#  push:
-#    branches:
-#      - "main"
-#    paths:
-#      - "docs/"
-#  # Allows you to run this workflow manually from the Actions tab
-#  workflow_dispatch:
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches:
+      - "main"
+    paths:
+      - "docs/"
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
