@@ -74,14 +74,14 @@ class TransmissionAncestryClade(BaseClade):
 
 def get_transmission_maps(trees: list, type_str: str = "Blocks") -> tuple:
     """
-    Extracts all the relevant information from a list of ete3.Tree objects.
+    Extracts all the relevant information from a list of ete4.Tree objects.
     The maps m1 and m2 are used as in the Larget approach for CCD1.
     With these we can construct a MAP tree, which can be annotated with
     branch lengths and blockcount summaries using the other two returns.
 
-    :param trees: list of ete3.Trees from which to extract the clade splits from.
+    :param trees: list of ete4.Trees from which to extract the clade splits
+                  from.
     :type trees: list
-
     :returns: Tuple of m1 (Clade counts), m2 (Clade split counts),
               blockcount_map (Blockcount counts), branch_lengths_map (Branch lengths)
     :rtype: tuple
@@ -94,7 +94,8 @@ def get_transmission_maps(trees: list, type_str: str = "Blocks") -> tuple:
                          f"Expected one of: {', '.join([item.value for item in TypeCCD])}") from e
 
     m1 = defaultdict(int)  # map for each clade how often it got sampled
-    m2 = defaultdict(int)  # map for each (c1,c2) clade how often this specific relation got sampled
+    m2 = defaultdict(
+        int)  # map for each (c1,c2) clade how often this specific relation got sampled
 
     blockcount_map = defaultdict(list)
     branch_lengths_map = defaultdict(list)
@@ -102,13 +103,15 @@ def get_transmission_maps(trees: list, type_str: str = "Blocks") -> tuple:
     # traversing all nodes of all trees using levelorder traversal
     for node in (node for t in trees for node in t.traverse("levelorder")):
         assert hasattr(node, "name"), "Node should have a name!"
-        assert hasattr(node, "blockcount"), ("The nodes should have the blockcount "
-                                             "attribute!")
+        assert hasattr(node, "blockcount"), (
+            "The nodes should have the blockcount "
+            "attribute!")
         if len(node) > 1:
             assert len(node.children) == 2, "Non binary tree not supported!"
 
             parent_clade, child0_clade, child1_clade, blockcount_map, branch_lengths_map = (
-                _add_internal_clade(node, ccd_type, blockcount_map, branch_lengths_map))
+                _add_internal_clade(node, ccd_type, blockcount_map,
+                                    branch_lengths_map))
 
             m1[parent_clade] += 1
             # child0 and child1 are sorted within _add_internal_node function
@@ -125,7 +128,8 @@ def get_transmission_maps(trees: list, type_str: str = "Blocks") -> tuple:
     return m1, m2, blockcount_map, branch_lengths_map
 
 
-def _add_internal_clade(node, ccd_type, blockcount_map: dict, branch_lengths_map: dict) \
+def _add_internal_clade(node, ccd_type, blockcount_map: dict,
+                        branch_lengths_map: dict) \
         -> tuple[BaseClade, BaseClade, BaseClade, dict, dict]:
     """
     Processes an internal node by constructing parent and child clades based on the CCD type,
@@ -133,7 +137,7 @@ def _add_internal_clade(node, ccd_type, blockcount_map: dict, branch_lengths_map
 
     :param node: The internal tree node to process. Assumed to have two children, a blockcount,
                  branch length (dist), and optionally transmission ancestry.
-    :type node: Node of an ete3.Tree, technically any object
+    :type node: Node of an ete4.Tree, technically any object
                 with attributes 'children', 'blockcount', 'dist', and optionally 'transm_ancest'
     :param ccd_type: Type of CCD to use and construct clades for.
     :type ccd_type: TypeCCD
@@ -152,17 +156,23 @@ def _add_internal_clade(node, ccd_type, blockcount_map: dict, branch_lengths_map
 
     match ccd_type:
         case TypeCCD.BLOCKS:
-            parent_clade = TransmissionBlockClade(parent_clade_set, node.blockcount != -1)
+            parent_clade = TransmissionBlockClade(parent_clade_set,
+                                                  node.blockcount != -1)
             child0_clade = TransmissionBlockClade(frozenset(c0_leafs),
-                                                  node.children[0].blockcount != -1)
+                                                  node.children[
+                                                      0].blockcount != -1)
             child1_clade = TransmissionBlockClade(frozenset(c1_leafs),
-                                                  node.children[1].blockcount != -1)
+                                                  node.children[
+                                                      1].blockcount != -1)
         case TypeCCD.ANCESTRY:
-            parent_clade = TransmissionAncestryClade(parent_clade_set, node.transm_ancest)
+            parent_clade = TransmissionAncestryClade(parent_clade_set,
+                                                     node.transm_ancest)
             child0_clade = TransmissionAncestryClade(frozenset(c0_leafs),
-                                                     node.children[0].transm_ancest)
+                                                     node.children[
+                                                         0].transm_ancest)
             child1_clade = TransmissionAncestryClade(frozenset(c1_leafs),
-                                                     node.children[1].transm_ancest)
+                                                     node.children[
+                                                         1].transm_ancest)
         case _:
             raise ValueError(f"Unknown type given: {ccd_type}")
 
@@ -186,7 +196,7 @@ def _add_leaf_clade(node, ccd_type: TypeCCD, blockcount_map: dict,
     and updates blockcount and branch length maps accordingly.
 
     :param node: The tree node corresponding to a leaf.
-    :type node: Node of an ete3.Tree, technically any object with attributes
+    :type node: Node of an ete4.Tree, technically any object with attributes
                 'name', 'blockcount', 'dist', and possibly 'transm_ancest'
     :param ccd_type: Type of CCD to use and construct clades for.
     :type ccd_type: TypeCCD
@@ -215,8 +225,10 @@ def _add_leaf_clade(node, ccd_type: TypeCCD, blockcount_map: dict,
     return blockcount_map, branch_lengths_map
 
 
-def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict, blockcount_map: dict,
-                                        branch_lengths_map: dict, seed: int = 42) -> str:
+def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
+                                        blockcount_map: dict,
+                                        branch_lengths_map: dict,
+                                        seed: int = 42) -> str:
     """
     Constructs the transmission CCD MAP tree using a bottom-up approach.
 
@@ -263,27 +275,35 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict, blockcount_map: dict
             c2_prob = 1 if len(child2) == 1 else seen_resolved_clades[child2][0]
 
             # cur_prob = m2[current_split] / m1[current_split[0]]
-            split_prob = c1_prob * c2_prob * (m2[current_split] / m1[current_split[0]])
+            split_prob = c1_prob * c2_prob * (
+                        m2[current_split] / m1[current_split[0]])
 
             if current_split[0] in seen_resolved_clades:
                 if seen_resolved_clades[current_split[0]][0] < split_prob:
-                    seen_resolved_clades[current_split[0]] = (split_prob, current_split)
+                    seen_resolved_clades[current_split[0]] = (split_prob,
+                                                              current_split)
                 elif seen_resolved_clades[current_split[0]][0] == split_prob:
-                    warnings.warn("Tie breaking in effect.")  # currently warns about tie breaking
+                    warnings.warn(
+                        "Tie breaking in effect.")  # currently warns about tie breaking
                     if random.random() < 0.5:
                         # choose 50/50 if we want to update or keep the old better split.
-                        seen_resolved_clades[current_split[0]] = (split_prob, current_split)
+                        seen_resolved_clades[current_split[0]] = (split_prob,
+                                                                  current_split)
             else:
-                seen_resolved_clades[current_split[0]] = (split_prob, current_split)
+                seen_resolved_clades[current_split[0]] = (split_prob,
+                                                          current_split)
 
     # construct the root clade and build a tree dict
     root_clade = max(seen_resolved_clades.keys())
-    output = _build_tree_dict_from_clade_splits(root_clade, seen_resolved_clades)
+    output = _build_tree_dict_from_clade_splits(root_clade,
+                                                seen_resolved_clades)
 
-    return recursive_nwk_split_dict(root_clade, output, blockcount_map, branch_lengths_map)
+    return recursive_nwk_split_dict(root_clade, output, blockcount_map,
+                                    branch_lengths_map)
 
 
-def recursive_nwk_split_dict(clade, output, blockcount_map, branch_lengths_map) -> str:
+def recursive_nwk_split_dict(clade, output, blockcount_map,
+                             branch_lengths_map) -> str:
     """
     Recursively generates a Newick string for the given clade.
     Currently, it annotates the median blockcount if a block is present.
@@ -323,7 +343,8 @@ def recursive_nwk_split_dict(clade, output, blockcount_map, branch_lengths_map) 
     )
 
 
-def _build_tree_dict_from_clade_splits(root_clade: BaseClade, seen_resolved_clades: dict) -> dict:
+def _build_tree_dict_from_clade_splits(root_clade: BaseClade,
+                                       seen_resolved_clades: dict) -> dict:
     """
      Constructs a tree dictionary from a set of resolved clade splits.
 
