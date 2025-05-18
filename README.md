@@ -29,3 +29,10 @@ You can then use `pip` to install the freshly build package.
 ```bash
 pip install dist/*.whl
 ```
+
+Or alternatively after cloning the repository install directly with the 
+following: 
+
+```bash
+pip install .
+```
