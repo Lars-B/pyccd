@@ -13,6 +13,16 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+dependencies = [
+  "numpy",
+  "ete4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest"
+]
+
 [project.urls]
 Homepage = "https://github.com/Lars-B/pyccd"
 Issues = "https://github.com/Lars-B/pyccd/issues"
