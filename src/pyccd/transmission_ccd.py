@@ -10,6 +10,8 @@ from functools import total_ordering
 
 import numpy as np
 
+from .tree import Tree
+
 
 class TypeCCD(Enum):
     """
@@ -72,19 +74,19 @@ class TransmissionAncestryClade(BaseClade):
     transm_ancest: str
 
 
-def get_transmission_maps(trees: list, type_str: str = "Blocks") -> tuple:
+def get_transmission_maps(trees: list[Tree], type_str: str = "Blocks") -> tuple:
     """
-    Extracts all the relevant information from a list of ete3.Tree objects.
+    Extracts all the relevant information from a list of Tree objects.
     The maps m1 and m2 are used as in the Larget approach for CCD1.
     With these we can construct a MAP tree, which can be annotated with
     branch lengths and blockcount summaries using the other two returns.
 
-    :param trees: list of ete3.Trees from which to extract the clade splits
+    :param type_str: Currently, either 'Blocks' or 'Ancestry' to determine the types of CCD to
+                     construct.
+    :param trees: list of Trees from which to extract the clade splits
                   from.
-    :type trees: list
     :returns: Tuple of m1 (Clade counts), m2 (Clade split counts),
               blockcount_map (Blockcount counts), branch_lengths_map (Branch lengths)
-    :rtype: tuple
     """
     try:
         # Converting type to an enum if possible
@@ -137,18 +139,12 @@ def _add_internal_clade(node, ccd_type, blockcount_map: dict,
 
     :param node: The internal tree node to process. Assumed to have two children, a blockcount,
                  branch length (dist), and optionally transmission ancestry.
-    :type node: Node of an ete3.Tree, technically any object
-                with attributes 'children', 'blockcount', 'dist', and optionally 'transm_ancest'
     :param ccd_type: Type of CCD to use and construct clades for.
-    :type ccd_type: TypeCCD
     :param blockcount_map: Dictionary mapping clades to a list of blockcounts.
-    :type blockcount_map: dict
     :param branch_lengths_map: Dictionary mapping clades to a list of branch lengths.
-    :type branch_lengths_map: dict
-    :return: A tuple containing the parent clade,
+    :returns: A tuple containing the parent clade,
              the two child clades (ordered by minimum leaf label),
              and the updated blockcount and branch lengths maps.
-    :rtype: tuple[BaseClade, BaseClade, BaseClade, dict, dict]
     """
     c0_leafs = {int(leaf.name) for leaf in node.children[0]}
     c1_leafs = {int(leaf.name) for leaf in node.children[1]}
@@ -196,16 +192,10 @@ def _add_leaf_clade(node, ccd_type: TypeCCD, blockcount_map: dict,
     and updates blockcount and branch length maps accordingly.
 
     :param node: The tree node corresponding to a leaf.
-    :type node: Node of an ete3.Tree, technically any object with attributes
-                'name', 'blockcount', 'dist', and possibly 'transm_ancest'
     :param ccd_type: Type of CCD to use and construct clades for.
-    :type ccd_type: TypeCCD
     :param blockcount_map: Dictionary mapping clades to a list of blockcounts.
-    :type blockcount_map: dict
     :param branch_lengths_map: Dictionary mapping clades to a list of branch lengths.
-    :type branch_lengths_map: dict
-    :return: Updated blockcount_map and branch_lengths_map.
-    :rtype: tuple[dict, dict]
+    :returns: Updated blockcount_map and branch_lengths_map.
     """
     match ccd_type:
         case TypeCCD.BLOCKS:
@@ -240,19 +230,12 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
     are used to construct the MAP tree, which is returned in Newick format.
 
     :param m1: A dictionary with clades as keys and their occurrences as values.
-    :type m1: dict
     :param m2: A dictionary with cladesplits as keys and their probabilities as values.
-    :type m2: dict
     :param blockcount_map: A mapping of clades to their respective block counts
-    :type blockcount_map: dict
     :param branch_lengths_map: A mapping of clades to their respective branch lengths
-    :type branch_lengths_map: dict
     :param seed: A seed for the random number generator to control tie-breaking. Default is 42.
-    :type seed: int
-
-    :returns: A string representing the tree in Newick format, annotated with median blockcounts
+    :returns: A string representing the tree in Newick format, annotated with median block-counts
               and mean branch lengths (might change in future versions).
-    :rtype: str
     """
     # Seed used for tie breaking using random.random() <= 0.5
     random.seed(seed)
@@ -310,17 +293,12 @@ def recursive_nwk_split_dict(clade, output, blockcount_map,
     If the given clade is a TransmissionAncestryClade it also annotates that.
 
     :param clade: The clade to generate the Newick string for.
-    :type clade: TransmissionBlockClade
     :param output: A dictionary containing the child clades for each parent.
                    As computed by the _build_tree_dirct_from_clade_splits function.
-    :type output: dict
     :param blockcount_map: A dictionary mapping clades to their associated blockcount values.
-    :type blockcount_map: dict
     :param branch_lengths_map: A dictionary mapping clades to their branch lengths.
-    :type branch_lengths_map: dict
-    :return: A string representing the tree in Newick format,
+    :returns: A string representing the tree in Newick format,
              annoated with meadian blockcount and mean branch lengths.
-    :rtype: str
     """
     if len(clade) == 1:
         # Base case for leaf node
@@ -358,16 +336,13 @@ def _build_tree_dict_from_clade_splits(root_clade: BaseClade,
 
      :param root_clade: The root clade to start building the tree from.
                         This clade and its children are instances of a subclass of `Clade`.
-     :type root_clade: BaseClade
      :param seen_resolved_clades: A dictionary mapping clades (of any subclass of `BaseClade`)
                                   to a tuple:
                                   '(probability, (parent_clade, left_clade, right_clade))'.
                                   Only the split information is used for constructing the tree.
-     :type seen_resolved_clades: dict
-     :return: A dictionary mapping each clade (of any subclass of `BaseClade`)
+     :returns: A dictionary mapping each clade (of any subclass of `BaseClade`)
               to its child clades (left, right),
               which are also instances of a subclass of `BaseClade`.
-     :rtype: dict
      """
     stack = [root_clade]
     output = {}

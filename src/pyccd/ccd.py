@@ -225,7 +225,7 @@ def get_tree_from_list_of_splits(splits) -> str:
 
 # function to add a single tree to the maps m1 and m2
 # def add_centroid(centroid, m1, m2):
-#     for node in centroid.etree.traverse("levelorder"):
+#     for node in centroid.tree.traverse("levelorder"):
 #         if len(node) > 2:
 #             c = node.children
 #             c0_leafs = set()

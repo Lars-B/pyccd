@@ -21,13 +21,9 @@ def read_nexus_trees(file: str, breath_trees: bool = True,
     also disabled.
 
     :param file: Input file
-    :type file: str
     :param breath_trees: If true, will assume that the trees have the blockcount annotated (default)
-    :type breath_trees: bool
     :param label_transm_history: If true, will label transmission ancestry (default)
-    :type label_transm_history: bool
-    :return: list of transmission trees
-    :rtype: list
+    :returns: list of transmission trees
     """
     # re_tree returns nwk string without the root height and no ; in the end
     re_tree = re.compile("\t?tree .*=? (.*$)", flags=re.I | re.MULTILINE)
@@ -63,30 +59,29 @@ def read_nexus_trees(file: str, breath_trees: bool = True,
 
                 # Replace all matches
                 new_tree_string = re.sub(pattern, replace_match, tree_string)
-                ete3tree = Tree(new_tree_string, format=1)
+                tree = Tree(new_tree_string, format=1)
 
                 if breath_trees:
                     # adjusting the tree to contain the blockcount label and correct node names
-                    _breath_label_nodes(ete3tree)
+                    _breath_label_nodes(tree)
 
-                trees.append(ete3tree)
+                trees.append(tree)
     # if only label_transm_history is set to true this won't make sense anyway
     if breath_trees and label_transm_history:
-        for ete3tree in trees:
-            label_transmission_tree(ete3tree)
+        for tree in trees:
+            label_transmission_tree(tree)
     return trees
 
 
-def _breath_label_nodes(ete3tree):
+def _breath_label_nodes(tree):
     """
     Annotating the node names and blockcount values to an ete3.Tree.
     This only works if the nodes names follow the name convention from above.
     That is %Node-label/blockcount% which is extracted in replace_match() above.
 
-    :param ete3tree: ete3.Tree that will get blockcount annotations from node names
-    :type ete3tree: ete3.Tree
+    :param tree: Tree that will get blockcount annotations from node names
     """
-    for node in ete3tree.traverse("levelorder"):
+    for node in tree.traverse("levelorder"):
         # this should technically never be the case...
         if not hasattr(node, "blockcount"):
             # Assert node.name format

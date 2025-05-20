@@ -9,20 +9,18 @@ for further processing.
 import collections
 from typing import List, Tuple
 
-from .tree import Tree
+from .tree import Tree, TreeNode
 
 
-def label_transmission_tree(etree):
+def label_transmission_tree(tree):
     """
-    Labels the transmission history onto a Tree object based on
-    blockcounts.
+    Labels the transmission history onto a Tree object based on blockcounts.
 
     This function modifies the tree in place by assigning transmission ancestry
     labels to nodes where blockcounts indicate unknown transmission ancestry.
     It does not return any values.
 
-    :param etree: A Tree object with blockcounts annotated.
-    :type etree: Tree
+    :param tree: A Tree object with blockcounts annotated.
     """
 
     unknown_count = 0
@@ -32,11 +30,11 @@ def label_transmission_tree(etree):
 
     # Loops over all nodes first, could probably be done more efficiently in the future
     unlabeled_nodes_list, unknown_count = _label_all_nodes(
-        etree, unlabeled_nodes_list, unknown_count
+        tree, unlabeled_nodes_list, unknown_count
     )
 
     unlabeled_nodes_list, top_infected_nodes_list = (
-        _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_nodes_list))
+        _label_leaf_and_reachable_nodes(tree, unlabeled_nodes_list, top_infected_nodes_list))
 
     unlabeled_nodes_list = _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list)
 
@@ -45,16 +43,16 @@ def label_transmission_tree(etree):
 
     # Sorting the list of unlabeled nodes by their level for _label_all_remaining_unknowns()
     unlabeled_nodes_list.sort(
-        key=lambda obj: obj.get_distance(etree.get_tree_root(), topology_only=True))
+        key=lambda obj: obj.get_distance(tree.get_tree_root(), topology_only=True))
     _label_all_remaining_unknowns(unlabeled_nodes_list, unknown_count)
 
 
-def _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_nodes_list):
+def _label_leaf_and_reachable_nodes(tree, unlabeled_nodes_list, top_infected_nodes_list):
     """
         Labels all leaf nodes and recursively propagates the
         transmission ancestry to all reachable nodes.
 
-        This function processes all the leaves in the provided tree (etree).
+        This function processes all the leaves in the provided tree (tree).
         For each leaf node:
 
         - If the blockcount is -1 (indicating no transmission event),
@@ -65,20 +63,17 @@ def _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_no
         The function modifies the tree by adding the transmission ancestry feature to nodes and
         updates the `unlabeled_nodes_list` by removing nodes that have been labeled.
 
-        :param etree: The tree to be processed (should contain leaf nodes with `blockcount`).
-        :type etree: Tree
+        :param tree: The tree to be processed (should contain leaf nodes with `blockcount`).
         :param unlabeled_nodes_list: List of nodes that have not yet been labeled
                                         with transmission ancestry.
-        :type unlabeled_nodes_list: list
         :param top_infected_nodes_list: List of nodes that are considered top-infected nodes,
                                         which are infected by transmission propagation.
-        :type top_infected_nodes_list: Collections.dequeue
-        :return: The updated `unlabeled_nodes_list` and `top_infected_nodes_list` after propagation.
-        :rtype: tuple
+        :returns: The updated `unlabeled_nodes_list` and `top_infected_nodes_list` after
+        propagation.
         """
     # First label all leafs and reachable nodes from leaves
     # todo too many nested blocks here, abstract and pull out into functions.
-    for leaf in etree:
+    for leaf in tree:
         if leaf.blockcount == -1:
             # No transmission event towards the current node,
             # recursively label all the nodes reachable from here
@@ -128,27 +123,23 @@ def _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_no
     return unlabeled_nodes_list, top_infected_nodes_list
 
 
-def _label_all_nodes(etree: Tree, unlabeled_nodes_list: List = None,
+def _label_all_nodes(tree: Tree, unlabeled_nodes_list: List = None,
                      unknown_count: int = 0) \
         -> \
                 Tuple[List, int]:
     """
     Labels all nodes by iterating over the entire tree.
 
-    :param etree: The tree to label.
-    :type etree: Tree
+    :param tree: The tree to label.
     :param unlabeled_nodes_list: List of unlabeled nodes. If None, initializes to an empty list.
-    :type unlabeled_nodes_list: list, optional
     :param unknown_count: Number of labeled unknown nodes (unknown transmission ancestors).
-    :type unknown_count: int, optional
-    :return: A tuple containing the updated list of unlabeled nodes and the updated unknown count.
-    :rtype: tuple[list, int]
+    :returns: A tuple containing the updated list of unlabeled nodes and the updated unknown count.
     """
 
     if unlabeled_nodes_list is None:
         unlabeled_nodes_list = []
 
-    for node in etree.traverse("levelorder"):
+    for node in tree.traverse("levelorder"):
         # Skip nodes that already have a transmission ancestor
         if hasattr(node, "transm_ancest"):
             continue
@@ -168,7 +159,7 @@ def _label_all_nodes(etree: Tree, unlabeled_nodes_list: List = None,
     return unlabeled_nodes_list, unknown_count
 
 
-def _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list):
+def _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list) -> list[TreeNode]:
     """
     Labels transmission ancestry for top-infected nodes and their children.
 
@@ -185,12 +176,9 @@ def _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list):
 
     :param top_infected_nodes_list: List of nodes with transmission ancestry
                                     that need to propagate labels to their children.
-    :type top_infected_nodes_list: Collections.dequeue
     :param unlabeled_nodes_list: List of nodes that need to be labeled with
                                  transmission ancestry.
-    :type unlabeled_nodes_list: list
-    :return: Updated `unlabeled_nodes_list` after labeling top-infected nodes' children.
-    :rtype: list
+    :returns: Updated `unlabeled_nodes_list` after labeling top-infected nodes' children.
     :raises AssertionError: If an unlabeled node is found or a non-binary tree is encountered.
     """
     while top_infected_nodes_list:
@@ -240,9 +228,7 @@ def _label_all_remaining_unknowns(unlabeled_nodes_list: List, unknown_count: int
 
     :param unlabeled_nodes_list: List of nodes to be labeled
                                  with transmission ancestry identifiers.
-    :type unlabeled_nodes_list: list
     :param unknown_count: The current count of labeled "Unknown" nodes
-    :type unknown_count: int
     """
     for node in unlabeled_nodes_list:
         if hasattr(node, "transm_ancest"):
