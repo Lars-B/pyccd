@@ -74,7 +74,7 @@ class TransmissionAncestryClade(BaseClade):
     transm_ancest: str
 
 
-def get_transmission_maps(trees: list[Tree], type_str: str = "Blocks") -> tuple:
+def get_transmission_maps(trees: list[Tree] | tuple[Tree], type_str: str = "Ancestry") -> tuple:
     """
     Extracts all the relevant information from a list of Tree objects.
     The maps m1 and m2 are used as in the Larget approach for CCD1.

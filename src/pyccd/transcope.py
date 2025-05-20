@@ -58,6 +58,7 @@ def main():
     if args.verbose:
         print(f"After burn-in there are {len(trees)} trees left...", file=sys.stderr)
 
+    # todo there is no way of controlling which type of tCCD this constructs...
     m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees)
     newick_map = get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map, branch_lengths_map)
 
