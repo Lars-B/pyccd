@@ -143,8 +143,8 @@ def _add_internal_clade(node, ccd_type, blockcount_map: dict,
     :param blockcount_map: Dictionary mapping clades to a list of blockcounts.
     :param branch_lengths_map: Dictionary mapping clades to a list of branch lengths.
     :returns: A tuple containing the parent clade,
-             the two child clades (ordered by minimum leaf label),
-             and the updated blockcount and branch lengths maps.
+              the two child clades (ordered by minimum leaf label),
+              and the updated blockcount and branch lengths maps.
     """
     c0_leafs = {int(leaf.name) for leaf in node.children[0]}
     c1_leafs = {int(leaf.name) for leaf in node.children[1]}
@@ -298,7 +298,7 @@ def recursive_nwk_split_dict(clade, output, blockcount_map,
     :param blockcount_map: A dictionary mapping clades to their associated blockcount values.
     :param branch_lengths_map: A dictionary mapping clades to their branch lengths.
     :returns: A string representing the tree in Newick format,
-             annoated with meadian blockcount and mean branch lengths.
+              annotated with meadian blockcount and mean branch lengths.
     """
     if len(clade) == 1:
         # Base case for leaf node
@@ -341,8 +341,8 @@ def _build_tree_dict_from_clade_splits(root_clade: BaseClade,
                                   '(probability, (parent_clade, left_clade, right_clade))'.
                                   Only the split information is used for constructing the tree.
      :returns: A dictionary mapping each clade (of any subclass of `BaseClade`)
-              to its child clades (left, right),
-              which are also instances of a subclass of `BaseClade`.
+               to its child clades (left, right),
+               which are also instances of a subclass of `BaseClade`.
      """
     stack = [root_clade]
     output = {}

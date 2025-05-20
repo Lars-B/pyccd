@@ -330,7 +330,6 @@ class TreeNode(object):
                               attribute as a node name in target tree.
 
         :returns: (rf, rf_max, common_attrs, names, edges_t1, edges_t2)
-
         """
         ref_t = self
         target_t = t2
@@ -363,8 +362,6 @@ class TreeNode(object):
     def get_cached_content(self, store_attr=None, container_type=set, leaves_only=True,
                            _store=None):
         """
-        .. versionadded: 2.2
-
         Returns a dictionary pointing to the preloaded content of each
         internal node under this tree. Such a dictionary is intended
         to work as a cache for operations that require many traversal
@@ -375,7 +372,6 @@ class TreeNode(object):
             the whole node instance is cached.
 
         :param _store: (internal use)
-
         """
 
         if _store is None:
@@ -1015,8 +1011,10 @@ def _get_features_string(self, features=None):
 def write_newick(rootnode, features=None, format=1, format_root_node=True,
                  is_leaf_fn=None, dist_formatter=None, support_formatter=None,
                  name_formatter=None, quoted_names=False):
-    """ Iteratively export a tree structure and returns its NHX
-    representation. """
+    """
+    Iteratively export a tree structure and returns its NHX
+    representation.
+    """
     newick = []
     leaf = is_leaf_fn if is_leaf_fn else lambda n: not bool(n.children)
     for postorder, node in rootnode.iter_prepostorder(is_leaf_fn=is_leaf_fn):

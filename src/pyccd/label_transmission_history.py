@@ -65,11 +65,11 @@ def _label_leaf_and_reachable_nodes(tree, unlabeled_nodes_list, top_infected_nod
 
         :param tree: The tree to be processed (should contain leaf nodes with `blockcount`).
         :param unlabeled_nodes_list: List of nodes that have not yet been labeled
-                                        with transmission ancestry.
+                                     with transmission ancestry.
         :param top_infected_nodes_list: List of nodes that are considered top-infected nodes,
                                         which are infected by transmission propagation.
         :returns: The updated `unlabeled_nodes_list` and `top_infected_nodes_list` after
-        propagation.
+                  propagation.
         """
     # First label all leafs and reachable nodes from leaves
     # todo too many nested blocks here, abstract and pull out into functions.
