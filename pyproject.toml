@@ -15,7 +15,6 @@ classifiers = [
 
 dependencies = [
   "numpy",
-  "ete3",
 ]
 
 [project.optional-dependencies]
