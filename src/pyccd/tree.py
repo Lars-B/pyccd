@@ -117,6 +117,17 @@ class TreeNode(object):
         else:
             raise TreeError("bad node_up type")
 
+    @property
+    def support(self):
+        return self._support
+
+    @support.setter
+    def support(self, value):
+        try:
+            self._support = float(value)
+        except (ValueError, TypeError):
+            raise TreeError("node support must be a float number")
+
     # Topology management
     def add_child(self, child=None, name=None, dist=None, support=None):
         """
@@ -536,6 +547,54 @@ class TreeNode(object):
         else:
             return False
 
+    def write(self, features=None, outfile=None, format=0, is_leaf_fn=None,
+              format_root_node=False, dist_formatter=None, support_formatter=None,
+              name_formatter=None, quoted_node_names=False):
+        """
+        Returns the newick representation of current node. Several
+        arguments control the way in which extra data is shown for
+        every node:
+
+        :argument features: a list of feature names to be exported
+          using the Extended Newick Format (i.e. features=["name",
+          "dist"]). Use an empty list to export all available features
+          in each node (features=[])
+
+        :argument outfile: writes the output to a given file
+
+        :argument format: defines the newick standard used to encode the
+          tree. See tutorial for details.
+
+        :argument False format_root_node: If True, it allows features
+          and branch information from root node to be exported as a
+          part of the newick text string. For newick compatibility
+          reasons, this is False by default.
+
+        :argument is_leaf_fn: See :func:`TreeNode.traverse` for
+          documentation.
+
+        **Example:**
+
+        ::
+
+             t.write(features=["species","name"], format=1)
+
+        """
+
+        nw = write_newick(self, features=features, format=format,
+                          is_leaf_fn=is_leaf_fn,
+                          format_root_node=format_root_node,
+                          dist_formatter=dist_formatter,
+                          support_formatter=support_formatter,
+                          name_formatter=name_formatter,
+                          quoted_names=quoted_node_names)
+
+        if outfile is not None:
+            with open(outfile, "w") as OUT:
+                OUT.write(nw)
+        else:
+            return nw
+
 
 def _translate_nodes(root, *nodes):
     name2node = dict([[n, None] for n in nodes if type(n) is str])
@@ -941,35 +1000,33 @@ def format_node(node, node_type, format, dist_formatter=None,
 
 
 def _get_features_string(self, features=None):
-    """ Generates the extended newick string NHX with extra data about
-    a node. """
-    string = ""
+    """
+    Generates the extended Newick NHX string with extra data about a node.
+    """
     if features is None:
         features = []
-    elif features == []:
+    elif not features:
         features = sorted(self.features)
 
+    parts = []
     for pr in features:
-        if hasattr(self, pr):
-            raw = getattr(self, pr)
-            if type(raw) in ITERABLE_TYPES:
-                raw = '|'.join(map(str, raw))
-            elif type(raw) == dict:
-                raw = '|'.join(map(lambda x, y: "%s-%s" % (x, y), raw.items()))
-            elif type(raw) == str:
-                pass
-            else:
-                raw = str(raw)
+        if not hasattr(self, pr):
+            continue
 
-            value = re.sub("[" + _ILEGAL_NEWICK_CHARS + "]", "_", \
-                           raw)
-            if string != "":
-                string += ":"
-            string += "%s=%s" % (pr, str(value))
-    if string != "":
-        string = "[&&NHX:" + string + "]"
+        raw = getattr(self, pr)
 
-    return string
+        if isinstance(raw, dict):
+            raw = '|'.join(f"{k}-{v}" for k, v in raw.items())
+        elif isinstance(raw, (list, tuple, set)):
+            raw = '|'.join(map(str, raw))
+        elif not isinstance(raw, str):
+            raw = str(raw)
+
+        # Replace illegal characters with "_"
+        sanitized = re.sub(rf"[{_ILEGAL_NEWICK_CHARS}]", "_", raw)
+        parts.append(f"{pr}={sanitized}")
+
+    return f"[&{','.join(parts)}]" if parts else ""
 
 
 def write_newick(rootnode, features=None, format=1, format_root_node=True,
