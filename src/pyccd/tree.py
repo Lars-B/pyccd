@@ -338,55 +338,25 @@ class TreeNode(object):
             raise TreeError(
                 "Unrooted tree found! Not supported in this package...")
 
-        attrs_t1 = {[getattr(n, attr_t1) for n in ref_t.iter_leaves() if hasattr(n, attr_t1)]}
-        attrs_t2 = {[getattr(n, attr_t2) for n in target_t.iter_leaves() if hasattr(n, attr_t2)]}
-        common_attrs = attrs_t1 & attrs_t2
+        attrs_t1 = {getattr(n, attr_t1) for n in ref_t.iter_leaves() if hasattr(n, attr_t1)}
+        attrs_t2 = {getattr(n, attr_t2) for n in target_t.iter_leaves() if hasattr(n, attr_t2)}
+        if attrs_t1 != attrs_t2:
+            raise TreeError("Trees have different taxa sets, not supported...")
 
-        # Check for duplicated items
-        # (is it necessary? can we optimize? what's the impact in performance?')
-        size1 = sum(
-            1 for n in ref_t.iter_leaves() if getattr(n, attr_t1, None) in common_attrs
-        )
-        size2 = sum(
-            1 for n in target_t.iter_leaves() if getattr(n, attr_t2, None) in common_attrs
-        )
-        if size1 > len(common_attrs):
-            raise TreeError('Duplicated items found in source tree')
-        if size2 > len(common_attrs):
-            raise TreeError('Duplicated items found in reference tree')
+        edges1 = extract_edge_set(ref_t, attr_t1)
+        edges2 = extract_edge_set(target_t, attr_t2)
 
-        ref_trees = [ref_t]
-        target_trees = [target_t]
+        # the two root edges are never counted here, as they are always
+        # present in both trees because of the common attr filters
+        rf = len((edges1 ^ edges2))
 
-        min_comparison = None
-        for t1 in ref_trees:
-            t1_content = t1.get_cached_content()
-            edges1 = set([
-                tuple(sorted([getattr(n, attr_t1) for n in content if
-                              hasattr(n, attr_t1) and getattr(n, attr_t1) in common_attrs]))
-                for content in t1_content.values()])
-            edges1.discard(())
+        # Otherwise we need to count the actual number of valid
+        # partitions in each tree -2 is to avoid counting the root
+        # partition of the two trees (only needed in rooted trees)
+        max_parts = (sum(1 for p in edges1 if len(p) > 1) +
+                     sum(1 for p in edges2 if len(p) > 1) - 2)
 
-            for t2 in target_trees:
-                t2_content = t2.get_cached_content()
-                edges2 = set([
-                    tuple(sorted([getattr(n, attr_t2) for n in content if
-                                  hasattr(n, attr_t2) and getattr(n, attr_t2) in common_attrs]))
-                    for content in t2_content.values()])
-                edges2.discard(())
-
-                # the two root edges are never counted here, as they are always
-                # present in both trees because of the common attr filters
-                rf = len((edges1 ^ edges2))
-
-                # Otherwise we need to count the actual number of valid
-                # partitions in each tree -2 is to avoid counting the root
-                # partition of the two trees (only needed in rooted trees)
-                max_parts = (len([p for p in edges1 if len(p) > 1]) +
-                             len([p for p in edges2 if len(p) > 1])) - 2
-
-                if not min_comparison or min_comparison[0] > rf:
-                    min_comparison = [rf, max_parts, common_attrs, edges1, edges2]
+        min_comparison = (rf, max_parts, edges1, edges2)
 
         return min_comparison
 
@@ -594,6 +564,19 @@ class TreeNode(object):
                 OUT.write(nw)
         else:
             return nw
+
+
+def extract_edge_set(t, attr_t):
+    t_content = t.get_cached_content()
+    edges = set()
+    for content in t_content.values():
+        edge = tuple(sorted(
+            getattr(n, attr_t)
+            for n in content
+        ))
+        if edge:
+            edges.add(edge)
+    return edges
 
 
 def _translate_nodes(root, *nodes):
