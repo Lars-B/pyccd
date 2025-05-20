@@ -74,12 +74,12 @@ class TransmissionAncestryClade(BaseClade):
 
 def get_transmission_maps(trees: list, type_str: str = "Blocks") -> tuple:
     """
-    Extracts all the relevant information from a list of ete4.Tree objects.
+    Extracts all the relevant information from a list of ete3.Tree objects.
     The maps m1 and m2 are used as in the Larget approach for CCD1.
     With these we can construct a MAP tree, which can be annotated with
     branch lengths and blockcount summaries using the other two returns.
 
-    :param trees: list of ete4.Trees from which to extract the clade splits
+    :param trees: list of ete3.Trees from which to extract the clade splits
                   from.
     :type trees: list
     :returns: Tuple of m1 (Clade counts), m2 (Clade split counts),
@@ -137,7 +137,7 @@ def _add_internal_clade(node, ccd_type, blockcount_map: dict,
 
     :param node: The internal tree node to process. Assumed to have two children, a blockcount,
                  branch length (dist), and optionally transmission ancestry.
-    :type node: Node of an ete4.Tree, technically any object
+    :type node: Node of an ete3.Tree, technically any object
                 with attributes 'children', 'blockcount', 'dist', and optionally 'transm_ancest'
     :param ccd_type: Type of CCD to use and construct clades for.
     :type ccd_type: TypeCCD
@@ -196,7 +196,7 @@ def _add_leaf_clade(node, ccd_type: TypeCCD, blockcount_map: dict,
     and updates blockcount and branch length maps accordingly.
 
     :param node: The tree node corresponding to a leaf.
-    :type node: Node of an ete4.Tree, technically any object with attributes
+    :type node: Node of an ete3.Tree, technically any object with attributes
                 'name', 'blockcount', 'dist', and possibly 'transm_ancest'
     :param ccd_type: Type of CCD to use and construct clades for.
     :type ccd_type: TypeCCD

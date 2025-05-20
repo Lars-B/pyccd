@@ -1,5 +1,5 @@
 """
-This module provides functions to label nodes in an ete4.Tree object
+This module provides functions to label nodes in an ete3.Tree object
 based on their blockcounts, assigning transmission ancestry identifiers.
 
 It traverses the tree and assigns labels to nodes where blockcounts
@@ -7,25 +7,25 @@ indicate unknown transmission ancestry. Unlabeled nodes are tracked
 for further processing.
 
 Dependencies:
-- ete4.Tree
+- ete3.Tree
 """
 import collections
 from typing import List, Tuple
 
-import ete4
+import ete3
 
 
 def label_transmission_tree(etree):
     """
-    Labels the transmission history onto an ete4.Tree object based on
+    Labels the transmission history onto an ete3.Tree object based on
     blockcounts.
 
     This function modifies the tree in place by assigning transmission ancestry
     labels to nodes where blockcounts indicate unknown transmission ancestry.
     It does not return any values.
 
-    :param etree: An ete4.Tree object with blockcounts annotated.
-    :type etree: ete4.Tree
+    :param etree: An ete3.Tree object with blockcounts annotated.
+    :type etree: ete3.Tree
     """
 
     unknown_count = 0
@@ -69,7 +69,7 @@ def _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_no
         updates the `unlabeled_nodes_list` by removing nodes that have been labeled.
 
         :param etree: The tree to be processed (should contain leaf nodes with `blockcount`).
-        :type etree: ete4.Tree
+        :type etree: ete3.Tree
         :param unlabeled_nodes_list: List of nodes that have not yet been labeled
                                         with transmission ancestry.
         :type unlabeled_nodes_list: list
@@ -131,14 +131,14 @@ def _label_leaf_and_reachable_nodes(etree, unlabeled_nodes_list, top_infected_no
     return unlabeled_nodes_list, top_infected_nodes_list
 
 
-def _label_all_nodes(etree: ete4.Tree, unlabeled_nodes_list: List = None,
+def _label_all_nodes(etree: ete3.Tree, unlabeled_nodes_list: List = None,
                      unknown_count: int = 0) \
         -> \
                 Tuple[List, int]:
     """
     Labels all nodes by iterating over the entire tree.
 
-    :param etree: The ete4 tree to label.
+    :param etree: The ete3 tree to label.
     :type etree: Tree
     :param unlabeled_nodes_list: List of unlabeled nodes. If None, initializes to an empty list.
     :type unlabeled_nodes_list: list, optional
