@@ -2,7 +2,7 @@
 This is a minimal copy/modification of the tree related code from ete3.
 Please see ete3 for more detail and the original code.
 LB: This is here because I don't need the full dependency and also don't want to have to wait for
-them to update to newer version or fix problems...
+them to update to newer versions or fix problems...
 """
 import os
 import re
@@ -305,11 +305,8 @@ class TreeNode(object):
             dist -= 1
         return dist
 
-    def robinson_foulds(self, t2, attr_t1="name", attr_t2="name",
-                        min_support_t1=0.0, min_support_t2=0.0):
+    def robinson_foulds(self, t2, attr_t1="name", attr_t2="name"):
         """
-        .. versionadded: 2.2
-
         Returns the Robinson-Foulds symmetric distance between current
         tree and a different tree instance.
 
@@ -321,8 +318,7 @@ class TreeNode(object):
         :param name attr_t2: Compare trees using a custom node
                               attribute as a node name in target tree.
 
-        :returns: (rf, rf_max, common_attrs, names, edges_t1, edges_t2,
-                    discarded_edges_t1, discarded_edges_t2)
+        :returns: (rf, rf_max, common_attrs, names, edges_t1, edges_t2)
 
         """
         ref_t = self
@@ -331,16 +327,18 @@ class TreeNode(object):
             raise TreeError(
                 "Unrooted tree found! Not supported in this package...")
 
-        attrs_t1 = set([getattr(n, attr_t1) for n in ref_t.iter_leaves() if hasattr(n, attr_t1)])
-        attrs_t2 = set([getattr(n, attr_t2) for n in target_t.iter_leaves() if hasattr(n, attr_t2)])
+        attrs_t1 = {[getattr(n, attr_t1) for n in ref_t.iter_leaves() if hasattr(n, attr_t1)]}
+        attrs_t2 = {[getattr(n, attr_t2) for n in target_t.iter_leaves() if hasattr(n, attr_t2)]}
         common_attrs = attrs_t1 & attrs_t2
 
         # Check for duplicated items
         # (is it necessary? can we optimize? what's the impact in performance?')
-        size1 = len(
-            [True for n in ref_t.iter_leaves() if getattr(n, attr_t1, None) in common_attrs])
-        size2 = len(
-            [True for n in target_t.iter_leaves() if getattr(n, attr_t2, None) in common_attrs])
+        size1 = sum(
+            1 for n in ref_t.iter_leaves() if getattr(n, attr_t1, None) in common_attrs
+        )
+        size2 = sum(
+            1 for n in target_t.iter_leaves() if getattr(n, attr_t2, None) in common_attrs
+        )
         if size1 > len(common_attrs):
             raise TreeError('Duplicated items found in source tree')
         if size2 > len(common_attrs):
@@ -358,13 +356,6 @@ class TreeNode(object):
                 for content in t1_content.values()])
             edges1.discard(())
 
-            if min_support_t1:
-                support_t1 = dict([
-                    (tuple(sorted([getattr(n, attr_t1) for n in content if
-                                   hasattr(n, attr_t1) and getattr(n, attr_t1) in common_attrs])),
-                     branch.support)
-                    for branch, content in t1_content.items()])
-
             for t2 in target_trees:
                 t2_content = t2.get_cached_content()
                 edges2 = set([
@@ -373,42 +364,18 @@ class TreeNode(object):
                     for content in t2_content.values()])
                 edges2.discard(())
 
-                if min_support_t2:
-                    support_t2 = dict([
-                        (tuple(sorted(([getattr(n, attr_t2) for n in content if
-                                        hasattr(n, attr_t2) and
-                                        getattr(n,attr_t2) in common_attrs]))),
-                         branch.support)
-                        for branch, content in t2_content.items()])
-
-                # if a support value is passed as a constraint,
-                # discard lowly supported branches from the analysis
-                discard_t1, discard_t2 = set(), set()
-
-                if min_support_t1:
-                    discard_t1 = set([p for p in edges1 if support_t1[p] < min_support_t1])
-
-                if min_support_t2:
-                    discard_t2 = set([p for p in edges2 if support_t2[p] < min_support_t2])
-
-                # rf = len(edges1 ^ edges2) - (len(discard_t1) + len(discard_t2))
-                # - polytomy_correction # poly_corr is 0 if the flag is not enabled
-                # rf = len((edges1-discard_t1) ^ (edges2-discard_t2))
-
                 # the two root edges are never counted here, as they are always
                 # present in both trees because of the common attr filters
-                rf = len(((edges1 ^ edges2) - discard_t2) - discard_t1)
+                rf = len((edges1 ^ edges2))
 
                 # Otherwise we need to count the actual number of valid
                 # partitions in each tree -2 is to avoid counting the root
                 # partition of the two trees (only needed in rooted trees)
-                max_parts = (len([p for p in edges1 - discard_t1 if len(p) > 1]) +
-                             len([p for p in edges2 - discard_t2 if len(p) > 1])) - 2
+                max_parts = (len([p for p in edges1 if len(p) > 1]) +
+                             len([p for p in edges2 if len(p) > 1])) - 2
 
-                # print max_parts
                 if not min_comparison or min_comparison[0] > rf:
-                    min_comparison = [rf, max_parts, common_attrs, edges1, edges2, discard_t1,
-                                      discard_t2]
+                    min_comparison = [rf, max_parts, common_attrs, edges1, edges2]
 
         return min_comparison
 
