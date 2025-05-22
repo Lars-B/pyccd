@@ -18,7 +18,7 @@ class TypeCCD(Enum):
     Enum representing different types of CCD.
 
     Attributes:
-        BLOCKS: Represents the "Blocks" mode, whether or not there is a block evenet.
+        BLOCKS: Represents the "Blocks" mode, whether there is a block event.
         ANCESTRY: Represents the "Ancestry" mode for processing transmission ancestry.
     """
     BLOCKS = "Blocks"
@@ -259,7 +259,7 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
 
             # cur_prob = m2[current_split] / m1[current_split[0]]
             split_prob = c1_prob * c2_prob * (
-                        m2[current_split] / m1[current_split[0]])
+                    m2[current_split] / m1[current_split[0]])
 
             if current_split[0] in seen_resolved_clades:
                 if seen_resolved_clades[current_split[0]][0] < split_prob:

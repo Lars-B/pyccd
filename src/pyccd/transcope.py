@@ -6,7 +6,7 @@ import argparse
 import sys
 
 from .read_nexus import read_nexus_trees
-from .transmission_ccd import get_transmission_maps, get_transmission_ccd_tree_bottom_up
+from .transmission_ccd import get_transmission_maps, get_transmission_ccd_tree_bottom_up, TypeCCD
 
 
 def main():
@@ -35,6 +35,11 @@ def main():
                         type=float,
                         help='Burn-in proportion between 0.0 and 1.0 (default: %(default)s))'
                         )
+    parser.add_argument('-t', '--ccd-type',
+                        help=f'What type of transmission CCD (default: %(default)s)',
+                        type=str,
+                        choices=[item.value for item in TypeCCD],
+                        default='Ancestry')
     parser.add_argument('-v', '--verbose',
                         action='store_true', help="Enable verbose status output")
     parser.add_argument('--overwrite', action='store_true',
@@ -58,8 +63,8 @@ def main():
     if args.verbose:
         print(f"After burn-in there are {len(trees)} trees left...", file=sys.stderr)
 
-    # todo there is no way of controlling which type of tCCD this constructs...
-    m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees)
+    m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees,
+                                                                       type_str=args.ccd_type)
     newick_map = get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map, branch_lengths_map)
 
     if args.verbose:
