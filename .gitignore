@@ -4,6 +4,7 @@
 
 # Sphinx documentation
 docs/_build/
+docs/transcope_help.txt
 
 # Distribution / packaging
 .Python

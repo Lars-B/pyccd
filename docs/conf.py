@@ -19,9 +19,9 @@ extensions = ['sphinx.ext.autodoc',
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('../src'))
 
 autodoc_default_options = {
@@ -37,3 +37,9 @@ html_theme = 'furo'
 html_logo = "magpie.png"
 pygments_style = "tango"
 pygments_dark_style = "monokai"
+
+
+def setup(app):
+    sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+    from generate_cli_help import generate_transcope_help
+    generate_transcope_help()
