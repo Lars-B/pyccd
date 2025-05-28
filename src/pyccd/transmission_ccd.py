@@ -249,6 +249,7 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
         for current_split in (i for i in m2 if i[0] == current_clade):
             child1, child2 = current_split[1], current_split[2]
 
+            assert current_clade == current_split[0], "This should be the same."
             assert (len(child1) == 1 or child1 in seen_resolved_clades), \
                 "child1 should be in seen_resolved_clades when its length > 1"
             assert (len(child2) == 1 or child2 in seen_resolved_clades), \
@@ -259,22 +260,26 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
 
             # cur_prob = m2[current_split] / m1[current_split[0]]
             split_prob = c1_prob * c2_prob * (
-                    m2[current_split] / m1[current_split[0]])
+                    m2[current_split] / m1[current_clade])
 
-            if current_split[0] in seen_resolved_clades:
-                if seen_resolved_clades[current_split[0]][0] < split_prob:
-                    seen_resolved_clades[current_split[0]] = (split_prob,
-                                                              current_split)
-                elif seen_resolved_clades[current_split[0]][0] == split_prob:
-                    warnings.warn(
-                        "Tie breaking in effect.")  # currently warns about tie breaking
+            if current_clade in seen_resolved_clades:
+                if seen_resolved_clades[current_clade][0] < split_prob:
+                    seen_resolved_clades[current_clade] = (split_prob,
+                                                           current_split, False)
+                elif seen_resolved_clades[current_clade][0] == split_prob:
+                    # choose 50/50 if we want to update or keep the old better split.
                     if random.random() < 0.5:
-                        # choose 50/50 if we want to update or keep the old better split.
-                        seen_resolved_clades[current_split[0]] = (split_prob,
-                                                                  current_split)
+                        # choose the new split
+                        chosen_prob, chosen_split = split_prob, current_split
+                    else:
+                        # choose the old split
+                        chosen_prob, chosen_split = seen_resolved_clades[current_clade][:2]
+                    # Thrid entry True because tiebreaking is in effect for this split.
+                    seen_resolved_clades[current_clade] = (chosen_prob, chosen_split, True)
+
             else:
-                seen_resolved_clades[current_split[0]] = (split_prob,
-                                                          current_split)
+                seen_resolved_clades[current_clade] = (split_prob,
+                                                       current_split, False)
 
     # construct the root clade and build a tree dict
     root_clade = max(seen_resolved_clades.keys())
@@ -346,15 +351,22 @@ def _build_tree_dict_from_clade_splits(root_clade: BaseClade,
      """
     stack = [root_clade]
     output = {}
+    tiebreaking_occurred = False
 
     while stack:
         parent = stack.pop()
-        _, (_, left, right) = seen_resolved_clades[parent]
-        # cur_split = seen_resolved_clades[cur_parent][1]
+        _, (_, left, right), tiebreaking = seen_resolved_clades[parent]
+        if tiebreaking:
+            tiebreaking_occurred = True
+
         output[parent] = (left, right)
-        # output[cur_parent] = (cur_split[1], cur_split[2])
+
         if len(left) > 1:
             stack.append(left)
         if len(right) > 1:
             stack.append(right)
+
+    # todo optional logging of which clades are affected by the tie break?
+    if tiebreaking_occurred:
+        warnings.warn("Tie breaking affected the constructed MAP tree!")
     return output
