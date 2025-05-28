@@ -316,12 +316,12 @@ class TreeNode(object):
             dist -= 1
         return dist
 
-    def robinson_foulds(self, t2, attr_t1="name", attr_t2="name"):
+    def robinson_foulds(self, target_t, attr_t1="name", attr_t2="name"):
         """
         Returns the Robinson-Foulds symmetric distance between current
         tree and a different tree instance.
 
-        :param t2: reference tree
+        :param target_t: target tree to compare with reference (self)
 
         :param name attr_t1: Compare trees using a custom node
                               attribute as a node name.
@@ -332,7 +332,6 @@ class TreeNode(object):
         :returns: (rf, rf_max, common_attrs, names, edges_t1, edges_t2)
         """
         ref_t = self
-        target_t = t2
         if len(ref_t.children) > 2 or len(target_t.children) > 2:
             raise TreeError(
                 "Unrooted tree found! Not supported in this package...")
