@@ -44,6 +44,11 @@ def main():
                         action='store_true', help="Enable verbose status output")
     parser.add_argument('--overwrite', action='store_true',
                         help='Overwrite existing output file')
+    parser.add_argument("--seed",
+                        help=f"Random seed for CCD-MAP tree tiebreaking (default: %(default)s)",
+                        default=1337,
+                        type=int)
+
     args = parser.parse_args()
 
     if not os.path.isfile(args.input_trees):
@@ -65,7 +70,9 @@ def main():
 
     m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees,
                                                                        type_str=args.ccd_type)
-    newick_map = get_transmission_ccd_tree_bottom_up(m1, m2, blockcount_map, branch_lengths_map)
+    newick_map = get_transmission_ccd_tree_bottom_up(m1, m2,
+                                                     blockcount_map, branch_lengths_map,
+                                                     seed=args.seed)
 
     if args.verbose:
         print("Writing transmission CCD-MAP tree to file...", file=sys.stderr)
