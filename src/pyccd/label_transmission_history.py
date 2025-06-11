@@ -7,7 +7,7 @@ indicate unknown transmission ancestry. Unlabeled nodes are tracked
 for further processing.
 """
 import collections
-from typing import List, Tuple
+from typing import List, Tuple, Any
 
 from .tree import Tree, TreeNode
 
@@ -34,9 +34,12 @@ def label_transmission_tree(tree):
     )
 
     unlabeled_nodes_list, top_infected_nodes_list = (
-        _label_leaf_and_reachable_nodes(tree, unlabeled_nodes_list, top_infected_nodes_list))
+        _label_leaf_and_reachable_nodes(tree, unlabeled_nodes_list, top_infected_nodes_list)
+    )
 
-    unlabeled_nodes_list = _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list)
+    unlabeled_nodes_list, unknown_count = _label_top_infected_nodes(top_infected_nodes_list,
+                                                                    unlabeled_nodes_list,
+                                                                    unknown_count)
 
     if len(unlabeled_nodes_list) == 0:
         return
@@ -94,10 +97,8 @@ def _label_leaf_and_reachable_nodes(tree, unlabeled_nodes_list, top_infected_nod
                         if not hasattr(working_node.up, "transm_ancest"):
                             # if the node upwards has not been labeled
                             # we can check if we need to add it
-                            if working_node.up.blockcount == -1:
-                                # the node up has not been labeled and extends the path
-                                if working_node.up not in working_node_list:
-                                    working_node_list.append(working_node.up)
+                            if working_node.up not in working_node_list:
+                                working_node_list.append(working_node.up)
                 # If working_node has children we need to sort those out too
                 if len(working_node.children) > 0:
                     assert len(working_node.children) == 2, "Non binary tree found, not supported!"
@@ -159,7 +160,8 @@ def _label_all_nodes(tree: Tree, unlabeled_nodes_list: List = None,
     return unlabeled_nodes_list, unknown_count
 
 
-def _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list) -> list[TreeNode]:
+def _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list, unknown_count) -> \
+tuple[Any, Any]:
     """
     Labels transmission ancestry for top-infected nodes and their children.
 
@@ -187,22 +189,41 @@ def _label_top_infected_nodes(top_infected_nodes_list, unlabeled_nodes_list) -> 
         assert cur_node not in unlabeled_nodes_list, \
             "This node should not be in the unlabeled list!"
         if len(cur_node.children) > 0:
+            added_unknown = False
             assert len(cur_node.children) == 2, "Non binary tree found, not supported!"
-            for c in cur_node.children:
-                if not hasattr(c, "transm_ancest"):
-                    assert c.blockcount in (0, -1), \
-                        ("A node with a higher blockcount should have"
-                         " been labeled before this point in the code.")
-                    # child of top infected node
-                    # if no event or one event on the edge we can label it with the ancestor
-                    c.transm_ancest = cur_node.transm_ancest
-                    if c in unlabeled_nodes_list:
-                        # Removing the child c if it was previously added to unlabeled list
-                        unlabeled_nodes_list.remove(c)
-                    if c.blockcount == -1:
-                        # only need to keep it if there was no event, i.e. path continues
-                        top_infected_nodes_list.append(c)
-    return unlabeled_nodes_list
+            child1, child2 = cur_node.children
+            # pull down label of parent if children are reachable and unlabeled
+            if not hasattr(child1, "transm_ancest"):
+                if child1.blockcount == -1:
+                    child1.transm_ancest = cur_node.transm_ancest
+                    top_infected_nodes_list.append(child1)
+            if not hasattr(child2, "transm_ancest"):
+                if child2.blockcount == -1:
+                    child2.transm_ancest = cur_node.transm_ancest
+                    top_infected_nodes_list.append(child2)
+
+            if not hasattr(child1, "transm_ancest"):
+                if not hasattr(child2, "transm_ancest"):
+                    # both children are unlabeld and have a blockcount > -1
+                    # this is an unknown transmission ancestor
+                    assert child1.blockcount > -1, ("Has to have at least "
+                                                    "one transmission even on branch")
+                    assert child2.blockcount > -1, ("Has to have at least "
+                                                    "one transmission even on branch")
+                    child1.transm_ancest = f"Unknown-{unknown_count}"
+                    child2.transm_ancest = f"Unknown-{unknown_count}"
+                    unknown_count += 1
+                # only child1 is unlabeled and the infector of child2 is the infector of child1
+                child1.transm_ancest = child2.transm_ancest
+            if not hasattr(child2, "transm_ancest"):
+                # only child 2 is still unlabled
+                child2.transm_ancest = child1.transm_ancest
+
+            if child1 in unlabeled_nodes_list:
+                unlabeled_nodes_list.remove(child1)
+            if child2 in unlabeled_nodes_list:
+                unlabeled_nodes_list.remove(child2)
+    return unlabeled_nodes_list, unknown_count
 
 
 def _label_all_remaining_unknowns(unlabeled_nodes_list: List, unknown_count: int) -> None:
