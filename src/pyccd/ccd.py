@@ -4,15 +4,16 @@ Module for the Conditional Clade Distribution implementation using maps for clad
 import re
 from collections import defaultdict
 from decimal import Decimal
-import ete3
 from numpy import random, log
 
+from .tree import Tree
 
-def get_clades(tree: ete3.Tree) -> set[frozenset[str]]:
+
+def get_clades(tree: Tree) -> set[frozenset[str]]:
     """
     Get all clades of a given tree
 
-    :param tree: an ete3 input tree
+    :param tree: an input tree
     :return: set of clades
     """
     treestr = tree.write(format=9)
@@ -35,12 +36,12 @@ def get_clades(tree: ete3.Tree) -> set[frozenset[str]]:
     return clades
 
 
-def get_maps(trees: list[ete3.Tree]) \
+def get_maps(trees: list[Tree]) \
         -> tuple[defaultdict[str, int], defaultdict[str, int], dict[int, list]]:
     """
     From a list of trees, return relevant CCD maps from clades/clade splits to counts.
 
-    :param trees: list of ete3 input trees
+    :param trees: list of input trees
     :return: maps for CCDs, clades to occurrences (m1), clades to clade splits (m2), unique trees
     """
     m1 = defaultdict(int)  # map for each clade how often it got sampled
@@ -191,7 +192,7 @@ def get_tree_from_list_of_splits(splits) -> str:
     n_taxa = len(splits[0][0])
     dist = 1
     # support is the rank of the node...
-    cur_t = ete3.Tree(support=0, dist=0, name=",".join([str(i) for i in
+    cur_t = Tree(support=0, dist=0, name=",".join([str(i) for i in
     sorted(splits[0][0])]))
     for parent, child1 in splits:
         node = cur_t.search_nodes(name=",".join([str(i) for i in sorted(parent)]))[0]
@@ -254,7 +255,7 @@ def get_tree_from_list_of_splits(splits) -> str:
 #     return m1, m2
 
 
-def sample_tree_from_ccd(m1, m2, n=1) -> list[ete3.Tree]:
+def sample_tree_from_ccd(m1, m2, n=1) -> list[Tree]:
     """
     Given a CCD with m1 and m2, this function samples n trees proportional to
     their probabilities from this CCD.
