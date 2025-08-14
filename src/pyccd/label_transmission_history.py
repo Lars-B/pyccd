@@ -9,7 +9,7 @@ for further processing.
 import collections
 from typing import List, Tuple, Any
 
-from .tree import Tree, TreeNode
+from .tree import Tree
 
 
 def label_transmission_tree(tree):
@@ -42,12 +42,14 @@ def label_transmission_tree(tree):
                                                                     unknown_count)
 
     if len(unlabeled_nodes_list) == 0:
+        tree.get_tree_root().add_feature("num_unknowns", unknown_count)
         return
 
     # Sorting the list of unlabeled nodes by their level for _label_all_remaining_unknowns()
     unlabeled_nodes_list.sort(
         key=lambda obj: obj.get_distance(tree.get_tree_root(), topology_only=True))
     _label_all_remaining_unknowns(unlabeled_nodes_list, unknown_count)
+    tree.get_tree_root().add_feature("num_unknowns", unknown_count)
 
 
 def _label_leaf_and_reachable_nodes(tree, unlabeled_nodes_list, top_infected_nodes_list):
