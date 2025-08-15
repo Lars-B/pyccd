@@ -26,7 +26,8 @@ datesWIW --help
 ```
 
 This tool will create a CSV file with the following columns
-[Infector, Infectee, Start Date of infection, End date of infection, type of infection (blockcount)]
+[Infector, Infectee, Start Date of infection, 
+End date of infection, type of infection (blockcount), Tree index]
 
 This tool currently assumes that the tip labels in the tree are formated like this:
 ```

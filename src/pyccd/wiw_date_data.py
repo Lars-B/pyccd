@@ -123,24 +123,34 @@ def extracting_data(tree, taxon_map):
     default=None,
     help="Path to save the CSV. Defaults to stdout."
 )
-def main(trees_file, output):
+@click.option(
+    "--burn-in",
+    type=float,
+    default=0.1,       # default if option is NOT passed
+    required=False,
+    is_eager=True,
+    help="Burn-in proportion between 0.0 and 1.0 (default: 0.1)"
+)
+def main(trees_file, output, burn_in):
     trees, taxon_map = read_nexus_trees(
         trees_file,
         breath_trees=True,
         parse_taxon_map=True
     )
-    # removing the first tree
-    trees = trees[1:]
+
+    burnin_index = int(burn_in * len(trees))
+    trees = trees[burnin_index:]
+
     click.echo(f"Parsed {len(trees)} trees.", err=True)
 
     all_results = []
-    # for i, tree in enumerate(trees):
-    #     click.echo(f"Processing tree index {i}...", err=True)
-    #     cur_df = extracting_data(tree, taxon_map)
-    #     all_results.append(cur_df)
-    with click.progressbar(trees, label="Processing trees") as bar:
-        for tree in bar:
+
+    with (click.progressbar(enumerate(trees, start=burnin_index),
+                            length=len(trees),
+                            label="Processing trees") as bar):
+        for i, tree in bar:
             cur_df = extracting_data(tree, taxon_map)
+            cur_df["tree_index"] = i  # add the tree index as a new column
             all_results.append(cur_df)
 
     final_df = pd.concat(all_results, ignore_index=True)
