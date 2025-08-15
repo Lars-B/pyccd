@@ -14,7 +14,9 @@ classifiers = [
 ]
 
 dependencies = [
-  "numpy",
+    "numpy",
+    "click",
+    "pandas"
 ]
 
 [project.optional-dependencies]
@@ -35,3 +37,4 @@ packages = ["src/pyccd"]
 
 [project.scripts]
 transcope = "pyccd.transcope:main"
+datesWIW = "pyccd.wiw_date_data:main"
