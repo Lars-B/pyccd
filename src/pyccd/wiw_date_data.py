@@ -3,7 +3,6 @@ from datetime import timedelta
 
 import click
 import pandas as pd
-from docutils.nodes import label
 import datetime as dt
 
 from . import read_nexus_trees
