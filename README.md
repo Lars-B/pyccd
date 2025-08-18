@@ -20,29 +20,32 @@ transcope --help
 ## WIW dates data extraction
 
 A commandline tool to extract date information about who-infected-whom.
-After installation you can run
+After installation you can get more information by running
 ```bash
 datesWIW --help
 ```
 
 This tool will create a CSV file with the following columns
-[Infector, Infectee, Start Date of infection, 
+[Infector, Infectee, Start Date of infection,
 End date of infection, type of infection (blockcount), Tree index]
 
-This tool currently assumes that the tip labels in the tree are formated like this:
+The tree index is corrected for burnin and reflect the index of a tree in the input file without
+burin removed.
+
+To convert the tree distances to dates we need the taxon labels to have date information.
+The default assumption is that the tip labels are foramted like this:
 ```
 ID+YYYY-MM-DD
 2+2007-11-01
 ```
 > [!Caution]
-> If this is not the case the tool will not work!
-
-If you have another format you can either change the code
-[here](https://github.com/Lars-B/pyccd/blob/main/src/pyccd/wiw_date_data.py#L18-L19) or let me know
-which format you have and I can add it.
+> Use the flags `--date-sep` and `--date-format` to specify your layout
+> Be aware that using a separator that is also present in the date format will not work!
 
 > [!Important]
-> It is also assumed that the float scale is in years, i.e. 1.0 branch length equals 1 year
+> It is also currently assumed that the float scale is in years, i.e. 1.0 branch length equals 1
+> year
+
 
 # Installation
 

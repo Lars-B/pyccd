@@ -3,6 +3,8 @@ from datetime import timedelta
 
 import click
 import pandas as pd
+from docutils.nodes import label
+import datetime as dt
 
 from . import read_nexus_trees
 from .wiw_network import find_infector_unknown, find_infector_with_data, find_infector
@@ -12,17 +14,40 @@ global SCALE
 SCALE = 365.24219
 
 
-def get_root_age_from_leafs(tree, taxon_map):
+def extract_date_from_label(taxon_label: str,
+                            sep: str = "+",
+                            fmt: str = "%Y-%m-%d"):
+    try:
+        date_str = taxon_label.split(sep)[1]
+        return dt.datetime.strptime(date_str, fmt).date()
+    except Exception:
+        pass
+
+    fallback_separators = ("+", ":", "-", "_",)
+    fallback_formats = ("%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%m/%d/%Y",)
+
+    for s in fallback_separators:
+        if s not in taxon_label:
+            continue
+        parts = taxon_label.split(s)
+        if len(parts) < 2:
+            continue
+        for f in fallback_formats:
+            try:
+                return dt.datetime.strptime(parts[1], f).date()
+            except Exception as e:
+                continue
+    raise ValueError(f"Could not extract date from label {taxon_label}.\n"
+                     f"Input for separation was '{sep}' and the date format was '{fmt}'.")
+
+
+def get_root_age_from_leafs(tree, taxon_map, sep, fmt):
     root_node = tree.get_tree_root()
     # scaling floats to dates
-    DATE_SEPARATOR = "+"
-    DATE_FORMAT = "%Y-%m-%d"
     scaling_list = []
     for l in tree:
         cur_root_dist = l.get_distance(root_node)
-        cur_date_str = taxon_map[int(l.name)].split(DATE_SEPARATOR)[1]
-        import datetime as dt
-        cur_date = dt.datetime.strptime(cur_date_str, DATE_FORMAT).date()
+        cur_date = extract_date_from_label(taxon_map[int(l.name)], sep, fmt)
         scaling_list.append((cur_root_dist, cur_date))
 
     # todo compute scaling from map of root distances to dates
@@ -72,7 +97,7 @@ def translate(value, taxon_map):
         return "Unknown"
 
 
-def extracting_data(tree, taxon_map):
+def extracting_data(tree, taxon_map, sep, fmt):
     root_node = tree.get_tree_root()
 
     data_frame = []
@@ -92,7 +117,7 @@ def extracting_data(tree, taxon_map):
         data_frame.extend(cur_data)
 
     scaled_data_frame = []
-    root_date = get_root_age_from_leafs(tree, taxon_map)
+    root_date = get_root_age_from_leafs(tree, taxon_map, sep, fmt)
     for infector, infectee, start, end, blockcount in data_frame:
         scaled_data_frame.append([
             translate(infector, taxon_map),
@@ -129,9 +154,24 @@ def extracting_data(tree, taxon_map):
     default=0.1,       # default if option is NOT passed
     required=False,
     is_eager=True,
-    help="Burn-in proportion between 0.0 and 1.0 (default: 0.1)"
+    show_default=True,
+    help="Burn-in proportion between 0.0 and 1.0."
 )
-def main(trees_file, output, burn_in):
+@click.option(
+    "--date-sep",
+    type=str,
+    default="+",
+    show_default=True,
+    help="Separator used in taxon labels to split ID and date."
+)
+@click.option(
+    "--date-format",
+    type=str,
+    default="%Y-%m-%d",
+    show_default=True,
+    help="Date format string to parse dates."
+)
+def main(trees_file, output, burn_in, date_sep, date_format):
     trees, taxon_map = read_nexus_trees(
         trees_file,
         breath_trees=True,
@@ -149,7 +189,7 @@ def main(trees_file, output, burn_in):
                             length=len(trees),
                             label="Processing trees") as bar):
         for i, tree in bar:
-            cur_df = extracting_data(tree, taxon_map)
+            cur_df = extracting_data(tree, taxon_map, date_sep, date_format)
             cur_df["tree_index"] = i  # add the tree index as a new column
             all_results.append(cur_df)
 
