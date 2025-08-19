@@ -5,8 +5,8 @@ import click
 import pandas as pd
 import datetime as dt
 
-from . import read_nexus_trees
-from .wiw_network import find_infector_unknown, find_infector_with_data, find_infector
+from read_nexus import read_nexus_trees
+from pyccd.find_infectors import find_infector_unknown, find_infector_with_data, find_infector
 
 global SCALE
 # Days per year, i.e. 1.0 float of branch length equals this value
@@ -89,11 +89,13 @@ def float_to_date(root_date, float_val):
 
 def translate(value, taxon_map):
     if str(value).startswith("Unknown"):
-        return "Unknown"
+        return str(value)
+    if str(value).startswith("block"):
+        return str(value)
     try:
-        return taxon_map.get(int(value), "Unknown")
+        return taxon_map.get(int(value), "Unknown_?")
     except (ValueError, TypeError):
-        return "Unknown"
+        return "Unknown_?"
 
 
 def extracting_data(tree, taxon_map, sep, fmt):
@@ -101,12 +103,17 @@ def extracting_data(tree, taxon_map, sep, fmt):
 
     data_frame = []
     unknown_nodes_todo = []
+    seen_unknown_labels = set()
 
     for leaf in tree:
         og_infector = find_infector(leaf)
         infector, cur_data, unknown_node = find_infector_with_data(leaf, root_node)
-        unknown_nodes_todo.append(unknown_node) if unknown_node is not None else None
-        data_frame.append(cur_data)
+
+        if unknown_node is not None and unknown_node.transm_ancest not in seen_unknown_labels:
+            unknown_nodes_todo.append(unknown_node)
+            seen_unknown_labels.add(unknown_node.transm_ancest)
+
+        data_frame.extend(cur_data)
         if og_infector != infector:
             raise ValueError("This should not happen?!")
 
@@ -115,22 +122,29 @@ def extracting_data(tree, taxon_map, sep, fmt):
         cur_data = find_infector_unknown(todo_node, root_node)
         data_frame.extend(cur_data)
 
+    # print("-----")
+    # for i in data_frame:
+    #     print(i)
+    # print("-----")
+    # todo not sure why some nodes are not unique but we can just remove the duplicate events....
+    unique_data = [x for x in {tuple(sublist) for sublist in data_frame}]
+
+
     scaled_data_frame = []
     root_date = get_root_age_from_leafs(tree, taxon_map, sep, fmt)
-    for infector, infectee, start, end, blockcount in data_frame:
+    for infector, infectee, start, blockcount in unique_data:
         scaled_data_frame.append([
             translate(infector, taxon_map),
             translate(infectee, taxon_map),
             float_to_date(root_date, start),
-            float_to_date(root_date, end),
             # todo we can translate blockcount to three types of infection events...
-            blockcount
+            blockcount if blockcount else "NaN",
         ])
 
     # print(data_frame)
     # print(scaled_data_frame)
     df = pd.DataFrame(scaled_data_frame, columns=["Infector", "Infectee", "Infection Start",
-                                                  "Infection End", "Infection Type (Blockcount)"])
+                                                  "Blockcount"])
     return df
 
 
@@ -202,4 +216,8 @@ def main(trees_file, output, burn_in, date_sep, date_format):
 
 
 if __name__ == '__main__':
-    main()
+    main(
+        # args=["--trees-file", "../../tests/data/Testing_date_extraction.trees",
+        args=["--trees-file", "../../tests/data/small_example.trees",
+              "--burn-in", "0.0"],
+    )

@@ -277,6 +277,9 @@ def _label_all_remaining_unknowns(unlabeled_nodes_list: List, unknown_count: int
                     # ancestry but haven't labeled it yet
                     node.transm_ancest = f"Unknown-{unknown_count}"
                     unknown_count += 1
+            if node_sibling.blockcount == 0 and hasattr(node_sibling, "transm_ancest"):
+                # Path of unknown transmission, if already labeled reuse that unknown label!
+                node.transm_ancest = node_sibling.transm_ancest
             else:
                 node.transm_ancest = f"Unknown-{unknown_count}"
                 unknown_count += 1
