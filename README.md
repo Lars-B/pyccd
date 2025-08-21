@@ -19,6 +19,11 @@ transcope --help
 
 ## WIW dates data extraction
 
+> [!Note]
+> A detailed example for this tool can be found
+> [here](https://gist.github.com/Lars-B/0909ffde2938c6782273719fabf1bb06)
+
+
 A commandline tool to extract date information about who-infected-whom.
 After installation you can get more information by running
 ```bash
@@ -26,8 +31,7 @@ datesWIW --help
 ```
 
 This tool will create a CSV file with the following columns
-[Infector, Infectee, Start Date of infection,
-End date of infection, type of infection (blockcount), Tree index]
+[Infector, Infectee, Start Date of infection, blockcount, Tree index]
 
 The tree index is corrected for burnin and reflect the index of a tree in the input file without
 burin removed.
@@ -45,7 +49,6 @@ ID+YYYY-MM-DD
 > [!Important]
 > It is also currently assumed that the float scale is in years, i.e. 1.0 branch length equals 1
 > year
-
 
 # Installation
 

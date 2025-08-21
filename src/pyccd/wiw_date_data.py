@@ -5,7 +5,7 @@ import click
 import pandas as pd
 import datetime as dt
 
-from read_nexus import read_nexus_trees
+from pyccd.read_nexus import read_nexus_trees
 from pyccd.find_infectors import find_infector_unknown, find_infector_with_data, find_infector
 
 global SCALE
