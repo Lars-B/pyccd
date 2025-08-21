@@ -18,4 +18,5 @@ Begin trees;
 		5	E+2025-08-18
 ;
 tree test1 = ((5[&blockcount=-1,blockstart=0.5,blockend=0.5]:0.75,4[&blockcount=3,blockstart=0.25,blockend=0.75]:0.75)[&blockcount=-1,blockstart=0.5,blockend=0.5]:0.25,((2[&blockcount=0,blockstart=0.5,blockend=0.5]:0.25,3[&blockcount=0,blockstart=0.5,blockend=0.5]:0.25)[&blockcount=0,blockstart=0.5,blockend=0.5]:0.25,1[&blockcount=1,blockstart=0.25,blockend=0.75]:0.5)[&blockcount=2,blockstart=0.25,blockend=0.75]:0.5)[&blockcount=-1,blockstart=0.5,blockend=0.5]:0.0;
+tree test2 = ((5[&blockcount=-1,blockstart=0.5,blockend=0.5]:0.75,4[&blockcount=3,blockstart=0.25,blockend=0.75]:0.75)[&blockcount=-1,blockstart=0.5,blockend=0.5]:0.25,((2[&blockcount=0,blockstart=0.5,blockend=0.5]:0.25,3[&blockcount=0,blockstart=0.5,blockend=0.5]:0.25)[&blockcount=4,blockstart=0.25,blockend=0.25]:0.25,1[&blockcount=1,blockstart=0.25,blockend=0.75]:0.5)[&blockcount=2,blockstart=0.25,blockend=0.75]:0.5)[&blockcount=-1,blockstart=0.5,blockend=0.5]:0.0;
 End;

@@ -49,24 +49,6 @@ def get_root_age_from_leafs(tree, taxon_map, sep, fmt):
         cur_date = extract_date_from_label(taxon_map[int(l.name)], sep, fmt)
         scaling_list.append((cur_root_dist, cur_date))
 
-    # todo compute scaling from map of root distances to dates
-    # scale is in years, days or whatever, can assume 1.0 = 1 year for now
-    # from itertools import combinations
-    # scales = []
-    # for (f1, d1), (f2, d2) in combinations(scaling_list, 2):
-    #     float_diff = abs(f2 - f1)
-    #     day_diff = abs((d2 - d1).days)
-    #
-    #     if float_diff != 0:
-    #         cur_scale = day_diff / float_diff
-    #         scales.append(cur_scale)
-    #     else:
-    #         print("Problem: Floatdiff is 0.0")
-    # avg_scales = sum(scales) / len(scales)
-    # variation = max(scales) - min(scales)
-    # print(f"The average scale is {avg_scales}")
-    # print(f"The variation is {variation}")
-
     root_dates = []
     for root_dist, date in scaling_list:
         root_dates.append(date - timedelta(days=(root_dist * SCALE)))
@@ -128,7 +110,6 @@ def extracting_data(tree, taxon_map, sep, fmt):
     # print("-----")
     # todo not sure why some nodes are not unique but we can just remove the duplicate events....
     unique_data = [x for x in {tuple(sublist) for sublist in data_frame}]
-
 
     scaled_data_frame = []
     root_date = get_root_age_from_leafs(tree, taxon_map, sep, fmt)
@@ -219,5 +200,5 @@ if __name__ == '__main__':
     main(
         # args=["--trees-file", "../../tests/data/Testing_date_extraction.trees",
         args=["--trees-file", "../../tests/data/small_example.trees",
-              "--burn-in", "0.0"],
+              "--burn-in", "0"],
     )

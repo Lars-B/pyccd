@@ -52,7 +52,7 @@ def find_infector_with_data(node, root_node, indirect: bool = False):
                     block_name,
                     node.name,
                     infection_start_dist_root,
-                    node.blockcount,
+                    None,
                 ]
             else:
                 data = [
@@ -95,7 +95,7 @@ def find_infector_with_data(node, root_node, indirect: bool = False):
             block_name,
             node.name,
             infection_start_dist_root,
-            parent.blockcount,
+            None,
         ]
     else:
         data = [
@@ -135,12 +135,23 @@ def find_infector_unknown(cur_u_node, root_node):
                 if node_sibling.blockcount > 0:
                     # infecting a block from a block with a block as sibling will result in a newly
                     # named unknown sample
+                    # block can not infect another block directly!
+                    infection_block_unknown_start = parent_root_dist + (cur_u_node.up.dist *
+                                                                        cur_u_node.up.blockend)
+
                     data = [
-                        # cur_u_node.up.transm_ancest,
-                        f"Unknown-block_{cur_u_node.up.name}",
-                        block_name,
-                        infection_start_dist_root,
-                        cur_u_node.blockcount,
+                        [
+                            f"Unknown-block_{cur_u_node.up.name}",
+                            f"Unknown_{cur_u_node.up.name}",
+                            infection_block_unknown_start,
+                            None
+                        ],
+                        [
+                            f"Unknown_{cur_u_node.up.name}",
+                            block_name,
+                            infection_start_dist_root,
+                            cur_u_node.blockcount
+                        ]
                     ]
                 else:
                     # infecting a block from a block with a sibling having some label we know that
@@ -174,7 +185,7 @@ def find_infector_unknown(cur_u_node, root_node):
                     infection_start_dist_root,
                     None,
                 ]
-        result = [data]
+        result = data if isinstance(data[0], list) else [data]
         if cur_u_node.up.transm_ancest.startswith("Unknown"):
             if not cur_u_node.up.is_root():
                 more_data = find_infector_unknown(cur_u_node.up, root_node)
@@ -202,11 +213,22 @@ def find_infector_unknown(cur_u_node, root_node):
         if parent.blockcount > 0:
             node_sibling = next(x for x in cur_u_node.up.children if x != cur_u_node)
             if node_sibling.blockcount > 0:
+                # Block can not infect a block directly
+                infection_block_unknown_start = (parent.up.get_distance(root_node)
+                                                 + (parent.dist * parent.blockend))
                 data = [
-                    f"Unknown-block_{parent.name}",
-                    block_name,
-                    dist_start_infection_to_root,
-                    cur_u_node.blockcount,
+                    [
+                        f"Unknown-block_{parent.name}",
+                        f"Unknown_{parent.name}",
+                        infection_block_unknown_start,
+                        None,
+                    ],
+                    [
+                        f"Unknown_{parent.name}",
+                        block_name,
+                        dist_start_infection_to_root,
+                        cur_u_node.blockcount,
+                    ]
                 ]
             else:
                 data = [
@@ -238,7 +260,7 @@ def find_infector_unknown(cur_u_node, root_node):
                 dist_start_infection_to_root,
                 None
             ]
-    result = [data]
+    result = data if isinstance(data[0], list) else [data]
     if parent.transm_ancest.startswith("Unknown"):
         more_data = find_infector_unknown(parent, root_node)
         result.extend(more_data)
