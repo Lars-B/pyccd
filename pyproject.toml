@@ -38,3 +38,4 @@ packages = ["src/pyccd"]
 [project.scripts]
 transcope = "pyccd.transcope:main"
 datesWIW = "pyccd.wiw_date_data:main"
+ccdMAP = "pyccd.ccd_map_cli:main"
