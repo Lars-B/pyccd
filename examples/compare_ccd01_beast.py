@@ -2,9 +2,10 @@ import subprocess
 from pathlib import Path
 
 from pyccd import read_nexus_trees
-from pyccd.ccd0_attempt import get_ccd0, get_tree_probability
-from pyccd.ccd import get_tree_probability as get_ccd1_tree_probability
+from pyccd.ccd0_attempt import get_ccd0, get_tree_probability, get_map_tree
+from pyccd.ccd import get_tree_probability as get_ccd1_tree_probability, get_ccd_tree_bottom_up
 from pyccd.ccd import get_maps
+from pyccd.tree import TreeNode
 
 
 def compare_to_java_tree_probs(java_tree_probs, python_tree_probs):
@@ -32,8 +33,6 @@ def parse_jave_output(java_output):
 
 
 def compare_tree_probs():
-    # todo automate the check of tree proabbilities of ccd0,1 of my implementation to beast one
-
     tree_files = [
         f"{Path(__file__).parent.absolute().parent}/examples/data/30Taxa.trees",
         # f"{Path(__file__).parent.absolute().parent}/examples/data/roetzer40.trees"
@@ -52,7 +51,6 @@ def compare_tree_probs():
             result = subprocess.run(cmd, check=True, capture_output=True, text=True)
             java_tree_probs = parse_jave_output(result.stdout)
 
-            # TODO swtich case for CCD0 and CCD1 to see differences and make it uniform...
             python_tree_probs = {}
             trees = read_nexus_trees(tree_file, breath_trees=False, label_transm_history=False)
             match ccd_type:
@@ -72,6 +70,53 @@ def compare_tree_probs():
             compare_to_java_tree_probs(java_tree_probs, python_tree_probs)
 
 
+def compare_map_trees():
+    tree_files = [
+        f"{Path(__file__).parent.absolute().parent}/examples/data/30Taxa.trees",
+        # f"{Path(__file__).parent.absolute().parent}/examples/data/roetzer40.trees"
+    ]
+
+    for ccd_type in ["CCD0", "CCD1"]:
+        for tree_file in tree_files:
+            cmd = [
+                "/Applications/BEAST 2.7.7/bin/treeannotator",
+                "-burnin", "0",
+                "-topology", ccd_type,
+                "-file", tree_file,
+            ]
+
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+
+            nexus_string = "#NEXUS" + result.stdout.split("#NEXUS")[1]
+
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".trees", delete=True) as f:
+                f.write(nexus_string)
+                f.flush()
+                java_tree = read_nexus_trees(f.name, breath_trees=False,
+                                         label_transm_history=False)
+
+            trees = read_nexus_trees(tree_file, breath_trees=False, label_transm_history=False)
+            match ccd_type:
+                case "CCD0":
+                    partitions_ccp = get_ccd0(trees)
+                    map_tree = get_map_tree(partitions_ccp)
+                case "CCD1":
+                    m1, m2, _ = get_maps(trees)
+                    map_tree_str = get_ccd_tree_bottom_up(m1, m2)
+                    map_tree = TreeNode(newick=map_tree_str)
+                case _:
+                    raise ValueError("Unsupported...")
+            dist = map_tree.robinson_foulds(java_tree[0])
+            if dist[0] != 0:
+                print(f"ERROR: Map tree difference detected for {ccd_type}: {dist[0]} "
+                      f"({tree_file})")
+            else:
+                print(f"No difference in MAP tree topology for {ccd_type}: {dist[0]} "
+                      f"({tree_file})")
+
+
 if __name__ == '__main__':
-    # todo also compare the MAP tree stuff
-    compare_tree_probs()
+    # compare_tree_probs()
+    compare_map_trees()
