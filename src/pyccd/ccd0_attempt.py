@@ -1,8 +1,11 @@
 from collections import defaultdict
+from collections import namedtuple
 from math import log
 from typing import Any
 
 from pyccd.tree import Tree
+
+CladeSplitInfo = namedtuple("CladeSplitInfo", ["split", "prob"])
 
 
 def expand(observed_clades, observed_clade_splits):
@@ -184,54 +187,122 @@ def get_tree_probability(tree, partitions_ccp, use_log=False):
     return float(prob)
 
 
-# todo extract this into the example part and automate properly...
-def compare_to_java_tree_probs(java_tree_probs, partitions_ccp):
-    python_probs = {}
-    for i, t in enumerate(trees):
-        python_probs[i] = get_tree_probability(t, partitions_ccp)
+def get_map_tree(partitions_ccp):
+    all_clades_sorted = sorted(partitions_ccp.keys(), key=len)
 
-    tolerance = 1e-12
+    seen_resolved_clades = {}
+    for cur_clade in all_clades_sorted:
+        assert len(cur_clade) > 2, "Cherries are not relevant for this?"
+        if len(cur_clade) <= 3:
+            # for a triplet we need to simply choose the max
+            cur_clade_split, cur_clade_split_prob = max(partitions_ccp[cur_clade].items(),
+                                                        key=lambda item: item[1])
+            assert cur_clade not in seen_resolved_clades, "Triplets should only get into here once"
+            seen_resolved_clades[cur_clade] = CladeSplitInfo(cur_clade_split, cur_clade_split_prob)
+        else:
+            for cur_clade_split, cur_clade_split_prob in partitions_ccp[cur_clade].items():
+                cur_clade_child1, cur_clade_child2 = cur_clade_split
 
-    print("Look for mismatches between java and python....")
-    prob_problem = []
-    for k in python_probs.keys():
-        v1 = python_probs[k]
-        v2 = java_tree_probs[k]
-        if abs(v1 - v2) > tolerance:
-            prob_problem.append((k, v1, v2))
-    print(prob_problem)
+                if len(cur_clade_child1) < 3:
+                    cur_clade_child1_prob = 1.0
+                else:
+                    assert cur_clade_child1 in seen_resolved_clades, "This should be impossible"
+                    cur_clade_child1_prob = seen_resolved_clades[cur_clade_child1].prob
+
+                if len(cur_clade_child2) < 3:
+                    cur_clade_child2_prob = 1.0
+                else:
+                    assert cur_clade_child2 in seen_resolved_clades, "This should be impossible"
+                    cur_clade_child2_prob = seen_resolved_clades[cur_clade_child2].prob
+
+                cur_clade_split_map_probabiltiy = cur_clade_child1_prob * cur_clade_child2_prob * cur_clade_split_prob
+                if cur_clade in seen_resolved_clades:
+                    if seen_resolved_clades[cur_clade].prob <= cur_clade_split_map_probabiltiy:
+                        seen_resolved_clades[cur_clade] = CladeSplitInfo(cur_clade_split,
+                                                                         cur_clade_split_map_probabiltiy)
+                else:
+                    seen_resolved_clades[cur_clade] = CladeSplitInfo(cur_clade_split,
+                                                                     cur_clade_split_map_probabiltiy)
+
+    output = {}
+    working_list = [max(seen_resolved_clades.keys())]
+
+    while working_list:
+        cur_parent = working_list.pop()
+        split, prob = seen_resolved_clades[cur_parent]
+        output[cur_parent] = split
+        for split_child in split:
+            if len(split_child) > 2:
+                working_list.append(split_child)
+
+    return output
+
+
+def get_tree_from_dict_of_splits(splits):
+    # todo need to fix the distances/branch lengths to make an ultrametric tree
+    output_tree = Tree(support=0, dist=0, name="root")
+    icount = 1
+
+    def recursive_children(node, new_split):
+        nonlocal splits, icount
+        clade_c1, clade_c2 = new_split
+
+        if len(clade_c1) == 2:
+            # add two leaf nodes
+            l1, l2 = clade_c1
+            internal = node.add_child(name=f"internal_{icount}", dist=1)
+            icount += 1
+            internal.add_child(name=f"leaf_{l1}", dist=1)
+            internal.add_child(name=f"leaf_{l2}", dist=1)
+        elif len(clade_c1) == 1:
+            # add a single leaf node
+            label = next(iter(clade_c1))
+            node.add_child(name=f"leaf_{label}", dist=1)
+        else:
+            c1 = node.add_child(name=f"child_internal_{icount}", dist=1)
+            icount += 1
+            recursive_children(c1, splits[clade_c1])
+
+        if len(clade_c2) == 2:
+            # add two leaf nodes
+            l1, l2 = clade_c2
+            internal = node.add_child(name=f"internal_{icount}", dist=1)
+            icount += 1
+            internal.add_child(name=f"leaf_{l1}", dist=1)
+            internal.add_child(name=f"leaf_{l2}", dist=1)
+        elif len(clade_c2) == 1:
+            # add a single leaf node
+            label = next(iter(clade_c2))
+            node.add_child(name=f"leaf_{label}", dist=1)
+        else:
+            # recursion further down
+            c2 = node.add_child(name=f"child_internal_{icount}", dist=1)
+            icount += 1
+            recursive_children(c2, splits[clade_c2])
+
+    recursive_children(output_tree, splits[max(splits.keys())])
+    print(output_tree.write(format=5))
+    return None
 
 
 if __name__ == '__main__':
     from pathlib import Path
 
     java_tree_probs = {}
-    # todo this should be automated properly, maybe write a little beast app for this...
-    #  or does this already exist if we use treestat? or something???
-    with (open(f"{Path(__file__).parent.absolute().parent.parent}/examples/data/java_probs.out")
-          as f):
-        for line in f:
-            if not line.startswith("Tree "):
-                continue
-            cur_index = int(line.split("=", 1)[0].split(" ")[1])
-            cur_prob = float(line.split("=", 1)[1].strip())
-            java_tree_probs[cur_index] = cur_prob
 
     from pyccd.read_nexus import read_nexus_trees
 
     tree_file = f"{Path(__file__).parent.absolute().parent.parent}/examples/data/30Taxa.trees"
-    trees = read_nexus_trees(tree_file, breath_trees=False, label_transm_history=False)
-    # trees = trees[int(len(trees)*0.1):]  # burn in deletion....
+    trees, taxon_map = read_nexus_trees(tree_file,
+                                        breath_trees=False,
+                                        label_transm_history=False,
+                                        parse_taxon_map=True)
+
+    trees = trees[int(len(trees) * 0.1):]  # burn in deletion....
     partitions_ccp = get_ccd0(trees)
 
-    compare_to_java_tree_probs(java_tree_probs, partitions_ccp)
+    output = get_map_tree(partitions_ccp)
 
-    # todo next steps are to get a ccd0 map tree
-    #  then compare that to the treeannotator output
-    # todo think about how to do this for ccd with transmission histories?...
-    #  then apply to simulation datasets etc...
-    # todo evaluate the breath stuff for increasing amount of trees
-    #  compare posterior wiw vs the summary trees and compare the scorse?
-    # todo write a cli interface to calculate the ccd1 and ccd0 map tree with this
-    # todo provide a example script that checks it creates the same as treeannotator
-    # todo entropy calculation needs to be adopted... can it be general for all types?
+    get_tree_from_dict_of_splits(output)
+
+    # todo compare ccd0 MAP to the treeannotator output
