@@ -247,38 +247,28 @@ def get_tree_from_dict_of_splits(splits):
         nonlocal splits, icount
         clade_c1, clade_c2 = new_split
 
-        if len(clade_c1) == 2:
-            # add two leaf nodes
-            l1, l2 = clade_c1
-            internal = node.add_child(name=f"internal_{icount}", dist=1)
-            icount += 1
-            internal.add_child(name=f"leaf_{l1}", dist=1)
-            internal.add_child(name=f"leaf_{l2}", dist=1)
-        elif len(clade_c1) == 1:
-            # add a single leaf node
-            label = next(iter(clade_c1))
-            node.add_child(name=f"leaf_{label}", dist=1)
-        else:
-            c1 = node.add_child(name=f"child_internal_{icount}", dist=1)
-            icount += 1
-            recursive_children(c1, splits[clade_c1])
+        def add_clade(node, clade):
+            nonlocal icount
+            nonlocal splits
+            n = len(clade)
+            if n == 2:
+                # add two leaf nodes
+                l1, l2 = clade
+                internal = node.add_child(name=f"internal_{icount}", dist=1)
+                icount += 1
+                internal.add_child(name=f"leaf_{l1}", dist=1)
+                internal.add_child(name=f"leaf_{l2}", dist=1)
+            elif n == 1:
+                # add a single leaf node
+                label = next(iter(clade))
+                node.add_child(name=f"leaf_{label}", dist=1)
+            else:
+                c1 = node.add_child(name=f"child_internal_{icount}", dist=1)
+                icount += 1
+                recursive_children(c1, splits[clade])
 
-        if len(clade_c2) == 2:
-            # add two leaf nodes
-            l1, l2 = clade_c2
-            internal = node.add_child(name=f"internal_{icount}", dist=1)
-            icount += 1
-            internal.add_child(name=f"leaf_{l1}", dist=1)
-            internal.add_child(name=f"leaf_{l2}", dist=1)
-        elif len(clade_c2) == 1:
-            # add a single leaf node
-            label = next(iter(clade_c2))
-            node.add_child(name=f"leaf_{label}", dist=1)
-        else:
-            # recursion further down
-            c2 = node.add_child(name=f"child_internal_{icount}", dist=1)
-            icount += 1
-            recursive_children(c2, splits[clade_c2])
+        add_clade(node, clade_c1)
+        add_clade(node, clade_c2)
 
     recursive_children(output_tree, splits[max(splits.keys())])
     print(output_tree.write(format=5))
@@ -298,7 +288,7 @@ if __name__ == '__main__':
                                         label_transm_history=False,
                                         parse_taxon_map=True)
 
-    trees = trees[int(len(trees) * 0.1):]  # burn in deletion....
+    trees = trees[int(len(trees) * 0.1):]
     partitions_ccp = get_ccd0(trees)
 
     output = get_map_tree(partitions_ccp)
