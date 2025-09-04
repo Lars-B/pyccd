@@ -197,6 +197,49 @@ class TreeNode(object):
         elif strategy == "postorder":
             return self._iter_descendants_postorder(is_leaf_fn=is_leaf_fn)
 
+    def iter_search_nodes(self, **conditions):
+        """
+        Search nodes in an iterative way. Matches are yielded as they
+        are being found. This avoids needing to scan the full tree
+        topology before returning the first matches. Useful when
+        dealing with huge trees.
+        """
+
+        for n in self.traverse():
+            conditions_passed = 0
+            for key, value in conditions.items():
+                if hasattr(n, key) and getattr(n, key) == value:
+                    conditions_passed += 1
+            if conditions_passed == len(conditions):
+                yield n
+
+    def search_nodes(self, **conditions):
+        """
+        Returns the list of nodes matching a given set of conditions.
+
+        **Example:**
+
+        ::
+
+          tree.search_nodes(dist=0.0, name="human")
+
+        """
+        matching_nodes = []
+        for n in self.iter_search_nodes(**conditions):
+            matching_nodes.append(n)
+        return matching_nodes
+
+    def iter_descendants(self, strategy="levelorder", is_leaf_fn=None):
+        """
+        Returns an iterator over all descendant nodes.
+
+        :argument None is_leaf_fn: See :func:`TreeNode.traverse` for
+          documentation.
+        """
+        for n in self.traverse(strategy=strategy, is_leaf_fn=is_leaf_fn):
+            if n is not self:
+                yield n
+
     def iter_prepostorder(self, is_leaf_fn=None):
         """
         Iterate over all nodes in a tree yielding every node in both
