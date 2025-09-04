@@ -72,13 +72,42 @@ def read_nexus_trees(file: str, breath_trees: bool = True,
                         counter += 1
                     taxa = split_str[0] or f"internal{counter}"
 
-                    metadata_items = split_str[1].rstrip("]").split(",")
-                    for item in metadata_items:
-                        clean_item, value = item.split("=", 1)
-                        clean_item = clean_item.lstrip("&").strip()
-                        # NOTE that this assumes . is not present in the actual meta label!
-                        clean_item = clean_item.split(".")[0]
-                        node_meta_data[taxa][clean_item] = value
+                    test_meta_string = split_str[1].replace("&", "").replace("]", "")
+
+                    metadata_pattern = re.compile(
+                        r"""
+                        ,?
+                        (?P<key>[^.=]+)
+                        \.[^=]*
+                        =
+                        (?:
+                            \{(?P<low>[^,}]+), (?P<high>[^}]+)}
+                            |
+                            (?P<val>[^, ]+)
+                        )
+                        """,
+                        re.VERBOSE
+                    )
+
+                    # metadata = {}
+                    for m in metadata_pattern.finditer(test_meta_string):
+                        key = m.group("key")
+                        if m.group("val") is not None:
+                            # metadata[key] = float(m.group("val").strip())
+                            node_meta_data[taxa][key] = float(m.group("val").strip())
+                        else:
+                            low = m.group("low").strip()
+                            hight = m.group("high").strip()
+                            # metadata[key] = (float(low), float(hight))
+                            node_meta_data[taxa][key] = (float(low), float(hight))
+
+                    # metadata_items = split_str[1].rstrip("]").split(",")
+                    # for item in metadata_items:
+                    #     clean_item, value = item.split("=", 1)
+                    #     clean_item = clean_item.lstrip("&").strip()
+                    #     # NOTE that this assumes . is not present in the actual meta label!
+                    #     clean_item = clean_item.split(".")[0]
+                    #     node_meta_data[taxa][clean_item] = value
                     return taxa
 
                 # Replace all matches, name internal nodes and extract meta data
