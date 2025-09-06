@@ -70,29 +70,35 @@ def get_maps_full(trees: list[Tree]) \
 
 
 def get_ccd0(trees):
+    # todo add an option ccdType like and make this compute ccd0 or ccd1, then merge into single
+    #  ccd.py file and replace old code with this cleaned up version
+    # todo the expansion step of ccd0 should be an option and might be too much for BREATH trees
+
     n_trees = len(trees)
 
-    m1, m2 = get_maps_full(trees)
+    m1_obs_clade_counts, m2_obs_clade_split_counts = get_maps_full(trees)
 
     clade_partitions = defaultdict(list)
 
-    for (parent, child1, child2), count in m2.items():
+    for (parent, child1, child2), count in m2_obs_clade_split_counts.items():
         clade_partitions[parent].append((child1, child2))
 
     # todo what is happening here, put this together with get maps...
-    expanded_test = expand(set(m1.keys()), clade_partitions)
-    clade_partitions = expanded_test
+    expanded_clade_split_counts = expand(set(m1_obs_clade_counts.keys()), clade_partitions)
+    clade_partitions = expanded_clade_split_counts
 
     ccd0_probabilities = {}
 
-    # todo need to extract this funciton...
+    # todo need to extract this function...
     def recursive_prob_computer(clade):
-        nonlocal ccd0_probabilities
+        # nonlocal ccd0_probabilities
+        # nonlocal clade_partitions
+        # nonlocal n_trees
 
         if clade in ccd0_probabilities:
             return ccd0_probabilities[clade]
 
-        clade_value = m1.get(clade, 0) / n_trees
+        clade_value = m1_obs_clade_counts.get(clade, 0) / n_trees
 
         # leaf
         if len(clade) == 1:
@@ -112,7 +118,6 @@ def get_ccd0(trees):
             return clade_value
 
         # general clade
-        # todo fix this to be properly computed...
         partitions_ccp[clade] = {}
         part_products = []
         for left, right in clade_partitions[clade]:
@@ -131,11 +136,10 @@ def get_ccd0(trees):
 
         clade_prob = clade_value * total
         ccd0_probabilities[clade] = clade_prob
-        # print(f"    Clade: {sorted(clade)} CCD0 Probability: {clade_prob}")
 
         child_probabilities = defaultdict(float)
-        root_clade = max(m1.keys())
-        child_probabilities[root_clade] = 1.0  # root probability starts at 1
+        root_clade = max(m1_obs_clade_counts.keys())
+        child_probabilities[root_clade] = 1.0
 
         from collections import deque
         queue = deque([root_clade])
@@ -150,17 +154,20 @@ def get_ccd0(trees):
                 child_probabilities[right] += parent_prob * ccp
 
                 # add children to the queue if they have further partitions
-                if left in partitions_ccp:
-                    queue.append(left)
-                if right in partitions_ccp:
-                    queue.append(right)
+                for child in (left, right):
+                    if child in partitions_ccp:
+                        queue.append(child)
+                # if left in partitions_ccp:
+                #     queue.append(left)
+                # if right in partitions_ccp:
+                #     queue.append(right)
 
         return clade_prob
 
     # todo rename the variables to be more consistent across the board...
     # using the recursion form here on...
     partitions_ccp = {}
-    for clade in m1:
+    for clade in m1_obs_clade_counts:
         recursive_prob_computer(clade)
 
     return partitions_ccp
@@ -188,6 +195,8 @@ def get_tree_probability(tree, partitions_ccp, use_log=False):
 
 
 def get_map_tree(partitions_ccp):
+    # todo rename variables...
+
     all_clades_sorted = sorted(partitions_ccp.keys(), key=len)
 
     seen_resolved_clades = {}
@@ -195,8 +204,11 @@ def get_map_tree(partitions_ccp):
         assert len(cur_clade) > 2, "Cherries are not relevant for this?"
         if len(cur_clade) <= 3:
             # for a triplet we need to simply choose the max
+
+            # todo point out to the user if the max is not unique!!!!
             cur_clade_split, cur_clade_split_prob = max(partitions_ccp[cur_clade].items(),
                                                         key=lambda item: item[1])
+
             assert cur_clade not in seen_resolved_clades, "Triplets should only get into here once"
             seen_resolved_clades[cur_clade] = CladeSplitInfo(cur_clade_split, cur_clade_split_prob)
         else:
@@ -215,14 +227,17 @@ def get_map_tree(partitions_ccp):
                     assert cur_clade_child2 in seen_resolved_clades, "This should be impossible"
                     cur_clade_child2_prob = seen_resolved_clades[cur_clade_child2].prob
 
-                cur_clade_split_map_probabiltiy = cur_clade_child1_prob * cur_clade_child2_prob * cur_clade_split_prob
+                cur_clade_split_map_probabiltiy = (cur_clade_child1_prob * cur_clade_child2_prob *
+                                                   cur_clade_split_prob)
                 if cur_clade in seen_resolved_clades:
                     if seen_resolved_clades[cur_clade].prob <= cur_clade_split_map_probabiltiy:
-                        seen_resolved_clades[cur_clade] = CladeSplitInfo(cur_clade_split,
-                                                                         cur_clade_split_map_probabiltiy)
+                        seen_resolved_clades[cur_clade] = CladeSplitInfo(
+                            cur_clade_split, cur_clade_split_map_probabiltiy
+                        )
                 else:
-                    seen_resolved_clades[cur_clade] = CladeSplitInfo(cur_clade_split,
-                                                                     cur_clade_split_map_probabiltiy)
+                    seen_resolved_clades[cur_clade] = CladeSplitInfo(
+                        cur_clade_split, cur_clade_split_map_probabiltiy
+                    )
 
     output = {}
     working_list = [max(seen_resolved_clades.keys())]
@@ -235,11 +250,10 @@ def get_map_tree(partitions_ccp):
             if len(split_child) > 2:
                 working_list.append(split_child)
 
-    return output
+    return get_tree_from_dict_of_splits(output)
 
 
 def get_tree_from_dict_of_splits(splits):
-    # todo need to fix the distances/branch lengths to make an ultrametric tree
     output_tree = Tree(support=0, dist=0, name="root")
     icount = 1
 
@@ -256,12 +270,12 @@ def get_tree_from_dict_of_splits(splits):
                 l1, l2 = clade
                 internal = node.add_child(name=f"internal_{icount}", dist=1)
                 icount += 1
-                internal.add_child(name=f"leaf_{l1}", dist=1)
-                internal.add_child(name=f"leaf_{l2}", dist=1)
+                internal.add_child(name=str(l1), dist=1)
+                internal.add_child(name=str(l2), dist=1)
             elif n == 1:
                 # add a single leaf node
                 label = next(iter(clade))
-                node.add_child(name=f"leaf_{label}", dist=1)
+                node.add_child(name=str(label), dist=1)
             else:
                 c1 = node.add_child(name=f"child_internal_{icount}", dist=1)
                 icount += 1
@@ -271,8 +285,7 @@ def get_tree_from_dict_of_splits(splits):
         add_clade(node, clade_c2)
 
     recursive_children(output_tree, splits[max(splits.keys())])
-    print(output_tree.write(format=5))
-    return None
+    return output_tree
 
 
 if __name__ == '__main__':
@@ -288,11 +301,13 @@ if __name__ == '__main__':
                                         label_transm_history=False,
                                         parse_taxon_map=True)
 
+    # todo refactor and make this work for ccd0 and ccd1 to replace the old code
+    # todo compute entropy from this and also compare that to java implementation
+    # todo maybe look at the expansion step and make it a bit faster somehow? profiler needed...
+
     trees = trees[int(len(trees) * 0.1):]
     partitions_ccp = get_ccd0(trees)
 
-    output = get_map_tree(partitions_ccp)
+    map_tree = get_map_tree(partitions_ccp)
 
-    get_tree_from_dict_of_splits(output)
-
-    # todo compare ccd0 MAP to the treeannotator output
+    print(map_tree.write(format=5))
