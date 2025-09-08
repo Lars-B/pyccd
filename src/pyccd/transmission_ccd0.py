@@ -5,27 +5,138 @@ from pyccd.ccd0_attempt import CladeSplitInfo
 from pyccd.transmission_ccd import get_transmission_maps
 
 
+def compatible(split, parent):
+    l, r = split
+
+    pancest = False if parent.transm_ancest.startswith("Unknown") else int(parent.transm_ancest)
+    lancest = False if l.transm_ancest.startswith("Unknown") else int(l.transm_ancest)
+    rancest = False if r.transm_ancest.startswith("Unknown") else int(r.transm_ancest)
+
+    if lancest in r.clade and rancest in l.clade:
+        # this doesn't work
+        return False
+
+    if not any([pancest, lancest, rancest]):
+        # all unknown so this is fine...
+        return True
+
+    if pancest in l.clade:
+        if lancest == pancest:
+            if rancest == pancest or not rancest:
+                return True
+        return False
+    if pancest in r.clade:
+        if rancest == pancest:
+            if lancest == pancest or not lancest:
+                return True
+        return False
+
+    if not any([lancest, rancest]):
+        # both left and right are unknown which is fine
+        return True
+
+    # here the parent ancestor is not in either left or right
+    # left and right have to be compatible though...
+    if lancest in l.clade:
+        if not rancest or rancest == lancest:
+            return True
+        return False
+    if rancest in r.clade:
+        if not lancest or lancest == rancest:
+            return True
+        return False
+
+    if rancest not in l.clade:
+        return False
+    if lancest not in r.clade:
+        return False
+
+    print(
+        f"-----------------\n"
+        f"No case applied, will be marked as not compatible...\n"
+        f"{parent}\n"
+        f"{split}\n"
+        f"-----------------"
+    )
+
+    return False
+
+
 def expand_tccd0(clade_partitions):
-    return 0
+    expanded_clade_partitions = defaultdict(set)
+
+    for clade, splits in clade_partitions.items():
+        for left, right in splits:
+            if min(left.clade) < min(right.clade):
+                expanded_clade_partitions[clade].add((left, right))
+            else:
+                expanded_clade_partitions[clade].add((right, left))
+
+    clade_buckets = defaultdict(set)
+    for c in clade_partitions.keys():
+        clade_buckets[len(c)].add(c)
+
+    total = len(clade_partitions)
+
+    for i, clade in enumerate(clade_partitions.keys(), 1):
+        n = len(clade)
+
+        # progress prints
+        if i % 100 == 0 or i == total:
+            print(f"[{i}/{total}] Working on clade of size {n}")
+
+        if n < 2:
+            # we now care about cherries, might even have to do leafs?...
+            continue
+
+        existing_splits = set(expanded_clade_partitions.get(clade, set()))
+
+        for left_size in range(1, n // 2 + 1):
+            # print(f"Working on {left_size}")
+            # this if is early stopping if there is nothing to combine with
+            if clade_buckets[n - left_size]:
+                for left in clade_buckets[left_size]:
+                    if left.clade.issubset(clade.clade):
+                        rightCladeSet = clade.clade - left.clade
+                        matches = [tc for tc in clade_buckets[len(rightCladeSet)] if tc.clade ==
+                                   rightCladeSet]
+                        if matches:
+                            for cur_right in matches:
+                                # todo this is ugly formatting...
+                                # l, r = (left, cur_right) if (
+                                #         min(left.clade) < min(cur_right.clade)) \
+                                #     else (cur_right, left)
+                                l, r = sorted([left, cur_right], key=lambda t: min(t.clade))
+                                split = (l, r)
+                                if split not in existing_splits:
+                                    if compatible(split, clade):
+                                        # print(
+                                        #     f"-----------------\n"
+                                        #     f"Found compatible split:"
+                                        #     f"\n{clade}\n"
+                                        #     f"{split}\n-----------------"
+                                        # )
+                                        expanded_clade_partitions[clade].add(split)
+
+    return expanded_clade_partitions
 
 
-def get_transmission_ccd0(trees):
+def get_transmission_ccd0(trees, expansion: bool = True):
     m1_observed_clade_counts, m2_observed_clade_split_counts, blockcount_map, branch_lengths_map = (
         get_transmission_maps(trees, type_str="Ancestry"))
 
     n_trees = len(trees)
-
-    # todo maybe I will have to remove the counts for unknowns so that they are treated the same
-    #  clade....
 
     clade_partitions = defaultdict(list)
 
     for (parent, child1, child2), count in m2_observed_clade_split_counts.items():
         clade_partitions[parent].append((child1, child2))
 
-    # todo expansion here....
-    # todo for expansion compatibility has to also consider the transmission ancestor...
-    expanded_clade_splis = expand_tccd0(clade_partitions)
+    if expansion:
+        print("Starting expansion")
+        expanded_clade_splis = expand_tccd0(clade_partitions)
+        clade_partitions = expanded_clade_splis
+        print("Expansion has finished...")
 
     ccd0_probabilities = {}
 
@@ -117,6 +228,7 @@ def get_map_tree(transmission_ccd0_map):
             if len(ties) > 0:
                 # todo could be annotated here and then if actually used in the MAP tree point it
                 #  out....
+                # todo might be valuable to keep all the most likely ones for uncertainty ...
                 print("TIEBREAKING: Highest probable split of a cherry was not unique")
             seen_resolved_clades[cur_clade] = CladeSplitInfo(ta_clade_split, prob)
         else:
@@ -135,6 +247,7 @@ def get_map_tree(transmission_ccd0_map):
                 cur_clade_split_map_probability = (cur_clade_child1_prob * cur_clade_child2_prob *
                                                    cur_clade_split_prob)
                 if cur_clade in seen_resolved_clades:
+                    # todo here there can be ties too, maybe need to point those out too...
                     if seen_resolved_clades[cur_clade].prob <= cur_clade_split_map_probability:
                         seen_resolved_clades[cur_clade] = CladeSplitInfo(
                             cur_clade_split, cur_clade_split_map_probability
@@ -203,12 +316,14 @@ if __name__ == '__main__':
     from pathlib import Path
 
     trees = read_nexus_trees(
-        f"{Path(__file__).parent.absolute().parent.parent}/examples/data/breath32sim.trees",
+        # f"{Path(__file__).parent.absolute().parent.parent}/examples/data/breath32sim.trees",
+        f"{Path(__file__).parent.absolute().parent.parent}/examples/data/roetzer40.trees",
+        # f"{Path(__file__).parent.absolute().parent.parent}/examples/data/breath32simShort.trees",
         breath_trees=True,
         label_transm_history=True
     )
 
-    trees = trees[int(len(trees) * 0.95):]
+    # trees = trees[int(len(trees) * 0.95):]
     print(f"Parsed {len(trees)} tree after burnin...")
 
     tccd0_map = get_transmission_ccd0(trees)
