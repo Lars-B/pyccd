@@ -17,6 +17,26 @@ class DemeClade(BaseClade):
     deme: str
 
 
+def _find_deme(node, geo_ann_str):
+    """
+    From the node find the nearest node below that is either a leaf or a binary node.
+    This is to ignore nodes that are along edges with state changes between binary nodes of the
+    tree. (Might be possible to summarize the number of changes at some point but not now!)
+
+    :param node: A node in a tree
+    :param geo_ann_str: The attribute name to return
+    :return: returns the value of the attribute of the nearest binary/leaf node
+    """
+    if node.is_leaf() or len(node.children) == 2:
+        return getattr(node, geo_ann_str)
+    else:
+        # find the closest binary node
+        cur_node = node.children[0]
+        while len(cur_node.children) == 1:
+            cur_node = cur_node.children[0]
+        return getattr(cur_node, geo_ann_str)
+
+
 def get_geo_map(trees, geo_ann_str, ccd_type=1):
     # todo unify to be ccd1 and ccd0... ccd_type WIP
     clade_count_map = defaultdict(int)
@@ -40,27 +60,8 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
 
             parent_clade = DemeClade(parent_leaves, deme=getattr(node, geo_ann_str))
 
-            # todo start of cleanup
-            # todo this needs a cleanup, maybe a for loop
-            if node.children[0].is_leaf() or len(node.children[0].children) == 2:
-                c0_deme = getattr(node.children[0], geo_ann_str)
-            else:
-                # find closest binary node
-                cur_node = node.children[0].children[0]
-                while len(cur_node.children) == 1:
-                    cur_node = cur_node.children[0]
-                c0_deme = getattr(cur_node, geo_ann_str)
-
-            if node.children[1].is_leaf() or len(node.children[1].children) == 2:
-                c1_deme = getattr(node.children[1], geo_ann_str)
-            else:
-                # find closest binary node...
-                cur_node = node.children[1].children[0]
-                while len(cur_node.children) == 1:
-                    cur_node = cur_node.children[0]
-                c1_deme = getattr(cur_node, geo_ann_str)
-            # todo end of cleanup
-
+            c0_deme = _find_deme(node.children[0], geo_ann_str)
+            c1_deme = _find_deme(node.children[1], geo_ann_str)
 
             c0_clade = DemeClade(frozenset(c0_leaves), deme=c0_deme)
             c1_clade = DemeClade(frozenset(c1_leaves), deme=c1_deme)
@@ -70,17 +71,6 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
                 clade_split_count_map[parent_clade][(c0_clade, c1_clade)] += 1
             else:
                 clade_split_count_map[parent_clade][(c1_clade, c0_clade)] += 1
-        # todo do we need the leaves here? I don't think so but maybe later?...
-        #  for the current way, the leaf annotations are set so all the same...
-        # elif len(node) == 1:
-        #    # leaf node
-        #    geo_ann = getattr(node, geo_ann_str)
-        #    clade = frozenset(int(node.name))
-        #    leaf_clade = DemeClade(deme=geo_ann, clade=clade)
-        #
-        # else:
-        #     raise ValueError("Something is wrong with this tree!")
-
     if ccd_type == 1:
         # convert counts to probabilities
         for clade in clade_count_map:
@@ -96,7 +86,7 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
     return {clade: dict(splits) for clade, splits in clade_split_count_map.items()}
 
 
-def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map):
+def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None):
     seen_resolved_clades = {}
     for clade in sorted(geo_ccd_map.keys(), key=len):
         if len(clade) == 2:
@@ -143,7 +133,7 @@ def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map):
     return get_tree_from_dict_of_splits(output, geo_ann_str, taxon_map)
 
 
-def get_tree_from_dict_of_splits(splits, geo_ann_str, taxon_map):
+def get_tree_from_dict_of_splits(splits, geo_ann_str, taxon_map=None):
     root = max(splits.keys())
     output_tree = Tree(support=0, dist=0, name="root")
     output_tree.add_feature(geo_ann_str, root.deme)
@@ -156,7 +146,7 @@ def get_tree_from_dict_of_splits(splits, geo_ann_str, taxon_map):
         def add_clade(node, clade):
             nonlocal icount, splits
             if len(clade) == 1:
-                label = taxon_map[next(iter(clade.clade))]
+                label = taxon_map[next(iter(clade.clade))] if taxon_map else next(iter(clade.clade))
                 leaf = node.add_child(name=str(label), dist=1)
                 leaf.add_feature(geo_ann_str, clade.deme)
             else:
