@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections import deque
 from dataclasses import dataclass
 
 from pyccd.ccd0_attempt import CladeSplitInfo
@@ -71,19 +72,83 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
                 clade_split_count_map[parent_clade][(c0_clade, c1_clade)] += 1
             else:
                 clade_split_count_map[parent_clade][(c1_clade, c0_clade)] += 1
+
     if ccd_type == 1:
         # convert counts to probabilities
         for clade in clade_count_map:
             for split in clade_split_count_map[clade]:
                 # todo this is where we could add a log version for precision and overflow.
                 clade_split_count_map[clade][split] /= clade_count_map[clade]
+        # convert to a dict to avoid defaultdict behaviour downstream
+        return {clade: dict(splits) for clade, splits in clade_split_count_map.items()}
     elif ccd_type == 0:
-        raise NotImplementedError("WIP")
+        n_trees = len(trees)
+
+        # todo missing expansion for now..
+
+        geo_ccd0_probabilities = {}
+
+        def recursive_prob_computer(clade):
+            if clade in geo_ccd0_probabilities:
+                return geo_ccd0_probabilities[clade]
+            clade_value = clade_count_map.get(clade, 0) / n_trees
+
+            # leaf
+            if len(clade) == 1:
+                geo_ccd0_probabilities[clade] = 1.0
+                return 1.0
+
+            output_map[clade] = {}
+            part_products = []
+            for left, right in clade_split_count_map[clade]:
+                left_prob = recursive_prob_computer(left)
+                right_prob = recursive_prob_computer(right)
+                product = left_prob * right_prob
+                part_products.append(product)
+            total = sum(part_products)
+
+            if total > 0:
+                for (left, right), prod in zip(clade_split_count_map[clade], part_products):
+                    output_map[clade][(left, right)] = prod / total
+            else:
+                raise ValueError("Need to implement a log fallback option")
+
+            clade_prob = clade_value * total
+            geo_ccd0_probabilities[clade] = clade_prob
+
+            child_probs = defaultdict(float)
+            queue = deque()
+
+            visited = set()
+
+            # assigning the frequency of each root to it as a starting probability
+            for clade in clade_count_map.keys():
+                if len(clade) == len(trees[0]):
+                    child_probs[clade] = clade_count_map[clade] / n_trees
+                    queue.append(clade)
+                    visited.add(clade)
+
+            while queue:
+                clade = queue.popleft()
+                parent_prob = child_probs[clade]
+
+                for (left, right), ccp in output_map.get(clade, {}).items():
+                    child_probs[left] += parent_prob * ccp
+                    child_probs[right] += parent_prob * ccp
+
+                    for child in (left, right):
+                        if child in output_map and child not in visited:
+                            queue.append(child)
+                            visited.add(child)
+            return clade_prob
+
+        # todo rename this thing...
+        output_map = {}
+        for clade in clade_count_map:
+            recursive_prob_computer(clade)
+        return output_map
     else:
         raise ValueError(f"Unknown ccd_type: {ccd_type}")
-
-    # convert to a dict to avoid defaultdict behaviour downstream
-    return {clade: dict(splits) for clade, splits in clade_split_count_map.items()}
 
 
 def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None):
@@ -173,10 +238,14 @@ if __name__ == '__main__':
                                         label_transm_history=False,
                                         parse_taxon_map=True)
 
-    # todo refactor and make this work for ccd0 and ccd1 to replace the old code
     # todo preliminary branch lengths would be nice for visualization stuff...
 
     trees = trees[int(len(trees) * 0.1):]
-    geo_ccd_map = get_geo_map(trees, geo_ann_str="type")
+    geo_ccd_map = get_geo_map(trees, geo_ann_str="type", ccd_type=1)
+    # geo_ccd_map = get_geo_map(trees, geo_ann_str="type", ccd_type=0)
+
+    # todo this needs another sanity check once I am more awake!
+    # todo refactoring to avoid unecessary duplication of the essentally same things...
+
     map_tree = get_geo_map_tree(geo_ccd_map, geo_ann_str="type", taxon_map=taxon_map)
     print(map_tree.write(format=5, features=["type"], format_root_node=True))
