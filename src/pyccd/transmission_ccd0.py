@@ -1,8 +1,8 @@
 from collections import defaultdict
 
-from pyccd import read_nexus_trees
 from pyccd.ccd0_attempt import CladeSplitInfo
 from pyccd.transmission_ccd import get_transmission_maps
+from pyccd.tree import Tree
 
 
 def compatible(split, parent):
@@ -215,17 +215,15 @@ def get_transmission_ccd0(trees, expansion: bool = True):
 
 
 def get_map_tree(transmission_ccd0_map):
-    all_clades_sorted = sorted(transmission_ccd0_map.keys(), key=len)
-
     seen_resolved_clades = {}
-    for cur_clade in all_clades_sorted:
+    for cur_clade in sorted(transmission_ccd0_map.keys(), key=len):
         if len(cur_clade) == 2:
             # cherries are now the smallest
             ta_clade_split, prob = max(tccd0_map[cur_clade].items(), key=lambda item: item[1])
 
             # check if max was unique:
             ties = [k for k, v in tccd0_map[cur_clade].items() if v == prob]
-            if len(ties) > 0:
+            if len(ties):
                 # todo could be annotated here and then if actually used in the MAP tree point it
                 #  out....
                 # todo might be valuable to keep all the most likely ones for uncertainty ...
@@ -257,7 +255,6 @@ def get_map_tree(transmission_ccd0_map):
                         cur_clade_split, cur_clade_split_map_probability
                     )
 
-    # todo build MAP tree from MAP tree split probabilities...
     output = {}
     all_root_clades = [k for k in seen_resolved_clades.keys()
                        if len(k) == len(max(seen_resolved_clades.keys()))]
@@ -281,8 +278,6 @@ def get_map_tree(transmission_ccd0_map):
 
 
 def get_tree_from_dict_of_splits(splits):
-    from pyccd.tree import Tree
-
     root_split = max(splits.keys())
     output_tree = Tree(support=0, dist=0, name="root")
     output_tree.add_feature("transm_ancest", root_split.transm_ancest)
@@ -314,11 +309,12 @@ def get_tree_from_dict_of_splits(splits):
 
 if __name__ == '__main__':
     from pathlib import Path
+    from pyccd import read_nexus_trees
 
     trees = read_nexus_trees(
         # f"{Path(__file__).parent.absolute().parent.parent}/examples/data/breath32sim.trees",
-        f"{Path(__file__).parent.absolute().parent.parent}/examples/data/roetzer40.trees",
-        # f"{Path(__file__).parent.absolute().parent.parent}/examples/data/breath32simShort.trees",
+        # f"{Path(__file__).parent.absolute().parent.parent}/examples/data/roetzer40.trees",
+        f"{Path(__file__).parent.absolute().parent.parent}/examples/data/breath32simShort.trees",
         breath_trees=True,
         label_transm_history=True
     )

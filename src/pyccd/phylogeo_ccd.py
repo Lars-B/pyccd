@@ -38,7 +38,7 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
             c1_leaves = {int(leaf.name) for leaf in node.children[1]}
             parent_leaves = frozenset(c0_leaves.union(c1_leaves))
 
-            parent_calde = DemeClade(parent_leaves, deme=getattr(node, geo_ann_str))
+            parent_clade = DemeClade(parent_leaves, deme=getattr(node, geo_ann_str))
 
             # todo start of cleanup
             # todo this needs a cleanup, maybe a for loop
@@ -65,11 +65,11 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
             c0_clade = DemeClade(frozenset(c0_leaves), deme=c0_deme)
             c1_clade = DemeClade(frozenset(c1_leaves), deme=c1_deme)
 
-            clade_count_map[parent_calde] += 1
+            clade_count_map[parent_clade] += 1
             if min(c0_leaves) < min(c1_leaves):
-                clade_split_count_map[parent_calde][(c0_clade, c1_clade)] += 1
+                clade_split_count_map[parent_clade][(c0_clade, c1_clade)] += 1
             else:
-                clade_split_count_map[parent_calde][(c1_clade, c0_clade)] += 1
+                clade_split_count_map[parent_clade][(c1_clade, c0_clade)] += 1
         # todo do we need the leaves here? I don't think so but maybe later?...
         #  for the current way, the leaf annotations are set so all the same...
         # elif len(node) == 1:
