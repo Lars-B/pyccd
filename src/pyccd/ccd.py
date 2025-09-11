@@ -16,6 +16,10 @@ def get_clades(tree: Tree) -> set[frozenset[str]]:
     :param tree: an input tree
     :return: set of clades
     """
+
+    # TODO this is a crazy function, just iterate over leafs of internal nodes and you have the
+    #  clades? see ccd0, need to remove this when merging....
+
     treestr = tree.write(format=9)
     clades = set()
     if not (treestr[0] == '(' and treestr[-2] == ')' and treestr[-1] == ';'):

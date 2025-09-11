@@ -9,6 +9,7 @@ CladeSplitInfo = namedtuple("CladeSplitInfo", ["split", "prob"])
 
 
 def expand(observed_clades, observed_clade_splits):
+    # todo observed clades can be replaced by using the keys in oberserved_clade_splits?
     expanded_clade_partitions = defaultdict(set)
 
     for clade, splits in observed_clade_splits.items():
@@ -32,6 +33,8 @@ def expand(observed_clades, observed_clade_splits):
 
         # consider only left sizes from 1 to n//2
         for left_size in range(1, n // 2 + 1):
+            # todo here add an early stop if there is nothing of comlementary size to combine with
+            #  see transmission ccd0
             for left in clade_buckets[left_size]:
                 if left.issubset(clade):
                     right = clade - left

@@ -123,6 +123,7 @@ def read_nexus_trees(file: str,
 
                 trees.append(tree)
     # if only label_transm_history is set to true this won't make sense anyway
+    # todo remove these two inputs as permanent ones and replace with optional input
     if breath_trees and label_transm_history:
         for tree in trees:
             label_transmission_tree(tree)
