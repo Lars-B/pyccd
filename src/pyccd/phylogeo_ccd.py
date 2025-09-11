@@ -1,6 +1,7 @@
 from collections import defaultdict
 from collections import deque
 from dataclasses import dataclass
+from statistics import mean
 
 from pyccd.ccd0_attempt import CladeSplitInfo
 from pyccd.transmission_ccd import BaseClade
@@ -39,9 +40,9 @@ def _find_deme(node, geo_ann_str):
 
 
 def get_geo_map(trees, geo_ann_str, ccd_type=1):
-    # todo unify to be ccd1 and ccd0... ccd_type WIP
     clade_count_map = defaultdict(int)
     clade_split_count_map = defaultdict(lambda: defaultdict(int))
+    branch_lenghts_map = defaultdict(list)
 
     for node in (node for t in trees for node in t.traverse("levelorder")):
         # if geo_ann_str not in node.features:
@@ -68,10 +69,17 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
             c1_clade = DemeClade(frozenset(c1_leaves), deme=c1_deme)
 
             clade_count_map[parent_clade] += 1
+            branch_lenghts_map[parent_clade].append(node.dist)
             if min(c0_leaves) < min(c1_leaves):
                 clade_split_count_map[parent_clade][(c0_clade, c1_clade)] += 1
             else:
                 clade_split_count_map[parent_clade][(c1_clade, c0_clade)] += 1
+        elif node.is_leaf():
+            leaf_clade = DemeClade(
+                frozenset({int(node.name)}),
+                deme=getattr(node, geo_ann_str)
+            )
+            branch_lenghts_map[leaf_clade].append(node.dist)
 
     if ccd_type == 1:
         # convert counts to probabilities
@@ -80,7 +88,8 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
                 # todo this is where we could add a log version for precision and overflow.
                 clade_split_count_map[clade][split] /= clade_count_map[clade]
         # convert to a dict to avoid defaultdict behaviour downstream
-        return {clade: dict(splits) for clade, splits in clade_split_count_map.items()}
+        return ({clade: dict(splits) for clade, splits in clade_split_count_map.items()},
+                branch_lenghts_map)
     elif ccd_type == 0:
         n_trees = len(trees)
 
@@ -98,7 +107,7 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
                 geo_ccd0_probabilities[clade] = 1.0
                 return 1.0
 
-            output_map[clade] = {}
+            phygeo_ccd0_map[clade] = {}
             part_products = []
             for left, right in clade_split_count_map[clade]:
                 left_prob = recursive_prob_computer(left)
@@ -109,7 +118,7 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
 
             if total > 0:
                 for (left, right), prod in zip(clade_split_count_map[clade], part_products):
-                    output_map[clade][(left, right)] = prod / total
+                    phygeo_ccd0_map[clade][(left, right)] = prod / total
             else:
                 raise ValueError("Need to implement a log fallback option")
 
@@ -132,26 +141,25 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
                 clade = queue.popleft()
                 parent_prob = child_probs[clade]
 
-                for (left, right), ccp in output_map.get(clade, {}).items():
+                for (left, right), ccp in phygeo_ccd0_map.get(clade, {}).items():
                     child_probs[left] += parent_prob * ccp
                     child_probs[right] += parent_prob * ccp
 
                     for child in (left, right):
-                        if child in output_map and child not in visited:
+                        if child in phygeo_ccd0_map and child not in visited:
                             queue.append(child)
                             visited.add(child)
             return clade_prob
 
-        # todo rename this thing...
-        output_map = {}
+        phygeo_ccd0_map = {}
         for clade in clade_count_map:
             recursive_prob_computer(clade)
-        return output_map
+        return phygeo_ccd0_map, branch_lenghts_map
     else:
         raise ValueError(f"Unknown ccd_type: {ccd_type}")
 
 
-def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None):
+def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None, branch_length_map={}):
     seen_resolved_clades = {}
     for clade in sorted(geo_ccd_map.keys(), key=len):
         if len(clade) == 2:
@@ -195,30 +203,41 @@ def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None):
         split, prob = seen_resolved_clades[cur_parent]
         output[cur_parent] = split
         working_list.extend(child for child in split if len(child) > 1)
-    return get_tree_from_dict_of_splits(output, geo_ann_str, taxon_map)
+    return get_tree_from_dict_of_splits(output, geo_ann_str, taxon_map, branch_length_map)
 
 
-def get_tree_from_dict_of_splits(splits, geo_ann_str, taxon_map=None):
+def get_tree_from_dict_of_splits(splits, geo_ann_str, taxon_map=None, branch_length_map={}):
     root = max(splits.keys())
-    output_tree = Tree(support=0, dist=0, name="root")
+
+    output_tree = Tree(support=0,
+                       dist=mean(branch_length_map[root]) if branch_length_map else 0,
+                       name="root")
+
     output_tree.add_feature(geo_ann_str, root.deme)
     icount = 1
 
     def recursive_children(node, new_split):
-        nonlocal icount, splits
+        nonlocal icount, splits, branch_length_map
         c1, c2 = new_split
 
         def add_clade(node, clade):
             nonlocal icount, splits
             if len(clade) == 1:
                 label = taxon_map[next(iter(clade.clade))] if taxon_map else next(iter(clade.clade))
-                leaf = node.add_child(name=str(label), dist=1)
+                leaf = node.add_child(
+                    name=str(label),
+                    dist=mean(branch_length_map.get(clade, [1]))
+                )
                 leaf.add_feature(geo_ann_str, clade.deme)
             else:
-                internal_node = node.add_child(name=f"internal_{icount}", dist=1)
+                internal_node = node.add_child(
+                    name=f"internal_{icount}",
+                    dist=mean(branch_length_map.get(clade, [1]))
+                )
                 internal_node.add_feature(geo_ann_str, clade.deme)
                 icount += 1
                 recursive_children(internal_node, splits[clade])
+
         add_clade(node, c1)
         add_clade(node, c2)
 
@@ -238,14 +257,12 @@ if __name__ == '__main__':
                                         label_transm_history=False,
                                         parse_taxon_map=True)
 
-    # todo preliminary branch lengths would be nice for visualization stuff...
 
     trees = trees[int(len(trees) * 0.1):]
-    geo_ccd_map = get_geo_map(trees, geo_ann_str="type", ccd_type=1)
-    # geo_ccd_map = get_geo_map(trees, geo_ann_str="type", ccd_type=0)
+    # geo_ccd_map = get_geo_map(trees, geo_ann_str="type", ccd_type=1)
+    geo_ccd_map, branch_length_map = get_geo_map(trees, geo_ann_str="type", ccd_type=0)
 
-    # todo this needs another sanity check once I am more awake!
-    # todo refactoring to avoid unecessary duplication of the essentally same things...
-
-    map_tree = get_geo_map_tree(geo_ccd_map, geo_ann_str="type", taxon_map=taxon_map)
+    map_tree = get_geo_map_tree(geo_ccd_map, geo_ann_str="type",
+                                taxon_map=taxon_map,
+                                branch_length_map=branch_length_map)
     print(map_tree.write(format=5, features=["type"], format_root_node=True))
