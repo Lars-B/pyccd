@@ -257,7 +257,6 @@ if __name__ == '__main__':
                                         label_transm_history=False,
                                         parse_taxon_map=True)
 
-
     trees = trees[int(len(trees) * 0.1):]
     # geo_ccd_map = get_geo_map(trees, geo_ann_str="type", ccd_type=1)
     geo_ccd_map, branch_length_map = get_geo_map(trees, geo_ann_str="type", ccd_type=0)
