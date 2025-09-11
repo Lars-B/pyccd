@@ -198,7 +198,6 @@ def main(trees_file, output, burn_in, date_sep, date_format):
 
 if __name__ == '__main__':
     main(
-        # args=["--trees-file", "../../tests/data/Testing_date_extraction.trees",
         args=["--trees-file", "../../tests/data/small_example.trees",
               "--burn-in", "0"],
     )

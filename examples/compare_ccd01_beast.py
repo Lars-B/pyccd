@@ -2,9 +2,9 @@ import subprocess
 from pathlib import Path
 
 from pyccd import read_nexus_trees
-from pyccd.ccd0_attempt import get_ccd0, get_tree_probability, get_map_tree
-from pyccd.ccd import get_tree_probability as get_ccd1_tree_probability, get_ccd_tree_bottom_up
 from pyccd.ccd import get_maps
+from pyccd.ccd import get_tree_probability as get_ccd1_tree_probability, get_ccd_tree_bottom_up
+from pyccd.ccd0_attempt import get_ccd0, get_tree_probability, get_map_tree
 from pyccd.tree import TreeNode
 
 
@@ -35,7 +35,7 @@ def parse_jave_output(java_output):
 def compare_tree_probs():
     tree_files = [
         f"{Path(__file__).parent.absolute().parent}/examples/data/30Taxa.trees",
-        # f"{Path(__file__).parent.absolute().parent}/examples/data/roetzer40.trees"
+        f"{Path(__file__).parent.absolute().parent}/examples/data/breath32sim.trees"
     ]
 
     for ccd_type in ["CCD0", "CCD1"]:
@@ -73,7 +73,7 @@ def compare_tree_probs():
 def compare_map_trees():
     tree_files = [
         f"{Path(__file__).parent.absolute().parent}/examples/data/30Taxa.trees",
-        # f"{Path(__file__).parent.absolute().parent}/examples/data/roetzer40.trees"
+        f"{Path(__file__).parent.absolute().parent}/examples/data/breath32sim.trees"
     ]
 
     for ccd_type in ["CCD0", "CCD1"]:
@@ -95,7 +95,7 @@ def compare_map_trees():
                 f.write(nexus_string)
                 f.flush()
                 java_tree = read_nexus_trees(f.name, breath_trees=False,
-                                         label_transm_history=False)
+                                             label_transm_history=False)
 
             trees = read_nexus_trees(tree_file, breath_trees=False, label_transm_history=False)
             match ccd_type:
@@ -118,5 +118,5 @@ def compare_map_trees():
 
 
 if __name__ == '__main__':
-    # compare_tree_probs()
+    compare_tree_probs()
     compare_map_trees()
