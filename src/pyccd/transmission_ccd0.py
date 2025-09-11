@@ -134,8 +134,8 @@ def get_transmission_ccd0(trees, expansion: bool = True):
 
     if expansion:
         print("Starting expansion")
-        expanded_clade_splis = expand_tccd0(clade_partitions)
-        clade_partitions = expanded_clade_splis
+        expanded_clade_splits = expand_tccd0(clade_partitions)
+        clade_partitions = expanded_clade_splits
         print("Expansion has finished...")
 
     ccd0_probabilities = {}
@@ -174,22 +174,27 @@ def get_transmission_ccd0(trees, expansion: bool = True):
         ccd0_probabilities[clade] = clade_prob
 
         child_probabilities = defaultdict(float)
-        root_clade = max(m1_observed_clade_counts.keys())
-        child_probabilities[root_clade] = 1.0
 
         from collections import deque
-        queue = deque([root_clade])
+        queue = deque()
 
         # Making sure we only visit each child once, otherwise this explodes, is that correct?...
         # This is different here because now a clade can split differently but with the same clade
         # as one of the children and the other is different, hence we need to check for visited
         # That is. C - C1, C2 but also C - C1, C3 where they have C1 the same but the sibling is
         # different...
-        visited = {root_clade}
+        visited = set()
 
-        steps = 0
+        # Handling multiple possible roots
+        for clade in m1_observed_clade_counts.keys():
+            if len(clade) == len(trees[0]):
+                child_probabilities[clade] = m1_observed_clade_counts[clade] / n_trees
+                queue.append(clade)
+                visited.add(clade)
+
+        # steps = 0
         while queue:
-            steps += 1
+            # steps += 1
             # if steps % 100 == 0:
             #     print(f"Step {steps}, queue size={len(queue)}")
             #     print(f"Length of stuff: {len(transmisison_ccd0_map.get(clade, {}).values())}")
@@ -223,11 +228,11 @@ def get_map_tree(transmission_ccd0_map):
 
             # check if max was unique:
             ties = [k for k, v in tccd0_map[cur_clade].items() if v == prob]
-            if len(ties):
-                # todo could be annotated here and then if actually used in the MAP tree point it
-                #  out....
-                # todo might be valuable to keep all the most likely ones for uncertainty ...
-                print("TIEBREAKING: Highest probable split of a cherry was not unique")
+            # if len(ties):
+            #     # todo could be annotated here and then if actually used in the MAP tree point it
+            #     #  out....
+            #     # todo might be valuable to keep all the most likely ones for uncertainty ...
+            #     print("TIEBREAKING: Highest probable split of a cherry was not unique")
             seen_resolved_clades[cur_clade] = CladeSplitInfo(ta_clade_split, prob)
         else:
             for cur_clade_split, cur_clade_split_prob in transmission_ccd0_map[cur_clade].items():
@@ -328,6 +333,4 @@ if __name__ == '__main__':
 
     tree_map_thingy = get_tree_from_dict_of_splits(map_tree)
 
-    # todo consistency of the tree being a BREATH tree?
-    # todo expansion of tccd0....
     print(tree_map_thingy.write(format=5, features=["transm_ancest"], format_root_node=True))
