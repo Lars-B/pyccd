@@ -161,14 +161,16 @@ def _add_internal_clade(node, ccd_type, blockcount_map: dict,
                                                   node.children[
                                                       1].blockcount != -1)
         case TypeCCD.ANCESTRY:
-            parent_clade = TransmissionAncestryClade(parent_clade_set,
-                                                     node.transm_ancest)
-            child0_clade = TransmissionAncestryClade(frozenset(c0_leafs),
-                                                     node.children[
-                                                         0].transm_ancest)
-            child1_clade = TransmissionAncestryClade(frozenset(c1_leafs),
-                                                     node.children[
-                                                         1].transm_ancest)
+            def sanitize_transm_ancest(transm_ancest: str) -> str:
+                return "Unknown" if transm_ancest.startswith("Unknown") else transm_ancest
+
+            parent_transm_ancest = sanitize_transm_ancest(node.transm_ancest)
+            child0_transm_ancest = sanitize_transm_ancest(node.children[0].transm_ancest)
+            child1_transm_ancest = sanitize_transm_ancest(node.children[1].transm_ancest)
+
+            parent_clade = TransmissionAncestryClade(parent_clade_set, parent_transm_ancest)
+            child0_clade = TransmissionAncestryClade(frozenset(c0_leafs), child0_transm_ancest)
+            child1_clade = TransmissionAncestryClade(frozenset(c1_leafs), child1_transm_ancest)
         case _:
             raise ValueError(f"Unknown type given: {ccd_type}")
 

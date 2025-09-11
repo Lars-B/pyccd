@@ -10,7 +10,8 @@ from pyccd.label_transmission_history import label_transmission_tree
 from pyccd.tree import Tree
 
 
-def read_nexus_trees(file: str, breath_trees: bool = True,
+def read_nexus_trees(file: str,
+                     breath_trees: bool = True,
                      label_transm_history: bool = True,
                      parse_taxon_map: bool = False) \
         -> list[Tree] | tuple[list[Tree], dict[str, str]]:
@@ -72,13 +73,41 @@ def read_nexus_trees(file: str, breath_trees: bool = True,
                         counter += 1
                     taxa = split_str[0] or f"internal{counter}"
 
-                    metadata_items = split_str[1].rstrip("]").split(",")
-                    for item in metadata_items:
-                        clean_item, value = item.split("=", 1)
-                        clean_item = clean_item.lstrip("&").strip()
-                        # NOTE that this assumes . is not present in the actual meta label!
-                        clean_item = clean_item.split(".")[0]
-                        node_meta_data[taxa][clean_item] = value
+                    test_meta_string = split_str[1].replace("&", "").replace("]", "")
+
+                    metadata_pattern = re.compile(
+                        r"""
+                        ,?
+                        (?P<key>[^.=]+)
+                        (?:\.[^=]*)?=
+                        (?:
+                            \{(?P<low>[^,}]+), (?P<high>[^}]+)}
+                            |
+                            (?P<val>[^, ]+)
+                        )
+                        """,
+                        re.VERBOSE
+                    )
+
+                    # metadata = {}
+                    for m in metadata_pattern.finditer(test_meta_string):
+                        key = m.group("key")
+                        if m.group("val"):
+                            # metadata[key] = float(m.group("val").strip())
+                            value = m.group("val").strip().strip('"\'')
+                            try:
+                                value = float(value)
+                            except ValueError:
+                                pass
+                            node_meta_data[taxa][key] = value
+                        elif m.group("low") and m.group("high"):
+                            low = m.group("low").strip()
+                            high = m.group("high").strip()
+                            # metadata[key] = (float(low), float(high))
+                            node_meta_data[taxa][key] = (float(low), float(high))
+                        else:
+                            raise ValueError("No metadata found!")
+
                     return taxa
 
                 # Replace all matches, name internal nodes and extract meta data
@@ -89,13 +118,12 @@ def read_nexus_trees(file: str, breath_trees: bool = True,
                 )
                 tree = Tree(sanitized_tree_newick, format=1)
 
-                # todo could be labelling trees with metadata by default now...
-                if breath_trees:
-                    # adjusting the tree to contain the blockcount label and correct node names
-                    _breath_label_nodes(tree, node_meta_data)
+                # Annotating meta data to nodes
+                _meta_label_nodes(tree, node_meta_data)
 
                 trees.append(tree)
     # if only label_transm_history is set to true this won't make sense anyway
+    # todo remove these two inputs as permanent ones and replace with optional input
     if breath_trees and label_transm_history:
         for tree in trees:
             label_transmission_tree(tree)
@@ -120,9 +148,9 @@ def _cast_to_int(value):
         return value
 
 
-def _breath_label_nodes(tree: Tree, node_meta_data) -> None:
+def _meta_label_nodes(tree: Tree, node_meta_data) -> None:
     """
-    Annotating the node names and blockcount values to an ete3.Tree.
+    Annotating the node names and blockcount values to a Tree.
     This only works if the nodes names follow the name convention from above.
     That is %Node-label/blockcount% which is extracted in replace_match() above.
 

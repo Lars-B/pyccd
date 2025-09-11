@@ -1,11 +1,15 @@
 from collections import defaultdict
+from collections import namedtuple
+from math import log
+from typing import Any
 
 from pyccd.tree import Tree
 
-from math import log
+CladeSplitInfo = namedtuple("CladeSplitInfo", ["split", "prob"])
 
 
 def expand(observed_clades, observed_clade_splits):
+    # todo observed clades can be replaced by using the keys in oberserved_clade_splits?
     expanded_clade_partitions = defaultdict(set)
 
     for clade, splits in observed_clade_splits.items():
@@ -29,6 +33,8 @@ def expand(observed_clades, observed_clade_splits):
 
         # consider only left sizes from 1 to n//2
         for left_size in range(1, n // 2 + 1):
+            # todo here add an early stop if there is nothing of comlementary size to combine with
+            #  see transmission ccd0
             for left in clade_buckets[left_size]:
                 if left.issubset(clade):
                     right = clade - left
@@ -44,7 +50,7 @@ def expand(observed_clades, observed_clade_splits):
 
 
 def get_maps_full(trees: list[Tree]) \
-        -> tuple[defaultdict[str, int], defaultdict[str, int], dict[int, list]]:
+        -> tuple[defaultdict[Any, int], defaultdict[Any, int]]:
     """
     From a list of trees, return relevant CCD maps from clades/clade splits to counts.
 
@@ -53,16 +59,8 @@ def get_maps_full(trees: list[Tree]) \
     """
     m1 = defaultdict(int)  # map for each clade how often it got sampled
     m2 = defaultdict(int)  # map for each (c1,c2) clade how often this specific relation got sampled
-    # uniques = {}
-
-    seen = {}
 
     for ix, t in enumerate(trees):
-        # if not frozenset(sorted(get_clades(t))) in seen:
-        #     seen[frozenset(sorted(get_clades(t)))] = ix
-        #     uniques[ix] = []
-        # else:
-        #     uniques[seen[frozenset(sorted(get_clades(t)))]].append(ix)
 
         for node in t.traverse("levelorder"):
             parent_clade = frozenset(int(leaf.name) for leaf in node)
@@ -71,48 +69,39 @@ def get_maps_full(trees: list[Tree]) \
                 child0_clade = frozenset(sorted(int(leaf.name) for leaf in node.children[0]))
                 child1_clade = frozenset(sorted(int(leaf.name) for leaf in node.children[1]))
                 m2[(parent_clade, child0_clade, child1_clade)] += 1
-            # if len(node) > 2:
-            #     c = node.children
-            #     c0_leafs = set()
-            #     for leaf in c[0]:
-            #         c0_leafs.add(int(leaf.name))
-            #     c1_leafs = set()
-            #     for leaf in c[1]:
-            #         c1_leafs.add(int(leaf.name))
-            #     parent_clade = frozenset(sorted(c0_leafs.union(c1_leafs)))
-            #     m1[parent_clade] += 1
-            #     if min(c0_leafs) < min(c1_leafs):
-            #         m2[(parent_clade, frozenset(c0_leafs))] += 1
-            #     else:
-            #         m2[(parent_clade, frozenset(c1_leafs))] += 1
     return m1, m2
 
 
 def get_ccd0(trees):
+    # todo add an option ccdType like and make this compute ccd0 or ccd1, then merge into single
+    #  ccd.py file and replace old code with this cleaned up version
+    # todo the expansion step of ccd0 should be an option and might be too much for BREATH trees
+
     n_trees = len(trees)
 
-    m1, m2 = get_maps_full(trees)
-
-    clade_credibility = {clade: count / n_trees for clade, count in m1.items()}  # converting m1
+    m1_obs_clade_counts, m2_obs_clade_split_counts = get_maps_full(trees)
 
     clade_partitions = defaultdict(list)
 
-    for (parent, child1, child2), count in m2.items():
+    for (parent, child1, child2), count in m2_obs_clade_split_counts.items():
         clade_partitions[parent].append((child1, child2))
 
-    # todo
-    expanded_test = expand(set(m1.keys()), clade_partitions)
-    clade_partitions = expanded_test
+    # todo what is happening here, put this together with get maps...
+    expanded_clade_split_counts = expand(set(m1_obs_clade_counts.keys()), clade_partitions)
+    clade_partitions = expanded_clade_split_counts
 
     ccd0_probabilities = {}
 
+    # todo need to extract this function...
     def recursive_prob_computer(clade):
-        nonlocal ccd0_probabilities
+        # nonlocal ccd0_probabilities
+        # nonlocal clade_partitions
+        # nonlocal n_trees
 
         if clade in ccd0_probabilities:
             return ccd0_probabilities[clade]
 
-        clade_value = m1.get(clade, 0) / n_trees
+        clade_value = m1_obs_clade_counts.get(clade, 0) / n_trees
 
         # leaf
         if len(clade) == 1:
@@ -132,7 +121,6 @@ def get_ccd0(trees):
             return clade_value
 
         # general clade
-        # todo fix this to be properly computed...
         partitions_ccp[clade] = {}
         part_products = []
         for left, right in clade_partitions[clade]:
@@ -140,13 +128,8 @@ def get_ccd0(trees):
             right_probability = recursive_prob_computer(right)
             product = (left_probability * right_probability)
             part_products.append(product)
-            # print(
-            #     f"    Clade: {sorted(clade)} Partition: left={sorted(left)} ({left_probability}),"
-            #     f" right={sorted(right)} ({right_probability}), "
-            #     f"product={product}")
 
         total = sum(part_products)
-        # print(f"    Total: {total} ({sorted(clade)})")
 
         if total > 0:
             for (left, right), prod in zip(clade_partitions[clade], part_products):
@@ -156,11 +139,10 @@ def get_ccd0(trees):
 
         clade_prob = clade_value * total
         ccd0_probabilities[clade] = clade_prob
-        # print(f"    Clade: {sorted(clade)} CCD0 Probability: {clade_prob}")
 
         child_probabilities = defaultdict(float)
-        root_clade = max(m1.keys())
-        child_probabilities[root_clade] = 1.0  # root probability starts at 1
+        root_clade = max(m1_obs_clade_counts.keys())
+        child_probabilities[root_clade] = 1.0
 
         from collections import deque
         queue = deque([root_clade])
@@ -175,87 +157,160 @@ def get_ccd0(trees):
                 child_probabilities[right] += parent_prob * ccp
 
                 # add children to the queue if they have further partitions
-                if left in partitions_ccp:
-                    queue.append(left)
-                if right in partitions_ccp:
-                    queue.append(right)
+                for child in (left, right):
+                    if child in partitions_ccp:
+                        queue.append(child)
+                # if left in partitions_ccp:
+                #     queue.append(left)
+                # if right in partitions_ccp:
+                #     queue.append(right)
 
         return clade_prob
 
+    # todo rename the variables to be more consistent across the board...
+    # using the recursion form here on...
     partitions_ccp = {}
-    for clade in m1:
+    for clade in m1_obs_clade_counts:
         recursive_prob_computer(clade)
-    tolerance = 1e-12
-    # mismatches = [
-    #     (clade, ccd0_probabilities.get(clade, "MISSING"), java_output[clade])
-    #     for clade in java_output
-    #     if (
-    #             (clade not in ccd0_probabilities) or
-    #             abs(ccd0_probabilities[clade] - java_output[clade]) > tolerance
-    #     )
-    # ]
-    # sorted_mismatches = sorted(mismatches, key=lambda x: len(x[0]))
 
-    def get_tree_probability(tree, partitions_ccp, use_log=False):
-        prob = 0.0 if use_log else 1
-        for node in tree.traverse("levelorder"):
-            if len(node) > 2:
-                # Cherry or bigger
-                left_clade = frozenset(sorted(int(leaf.name) for leaf in node.children[0]))
-                right_clade = frozenset(sorted(int(leaf.name) for leaf in node.children[1]))
-                split = (left_clade, right_clade) if min(left_clade) < min(right_clade) \
-                    else (right_clade, left_clade)
-                parent_clade = left_clade | right_clade
-                ccp = partitions_ccp.get(parent_clade, {}).get(split, 0.0)
-                if ccp == 0.0:
-                    prob = float("-inf") if use_log else 0.0
-                    break
-                if use_log:
-                    prob += log(ccp)
+    return partitions_ccp
+
+
+def get_tree_probability(tree, partitions_ccp, use_log=False):
+    prob = 0.0 if use_log else 1
+    for node in tree.traverse("levelorder"):
+        if len(node) > 2:
+            # Cherry or bigger
+            left_clade = frozenset(sorted(int(leaf.name) for leaf in node.children[0]))
+            right_clade = frozenset(sorted(int(leaf.name) for leaf in node.children[1]))
+            split = (left_clade, right_clade) if min(left_clade) < min(right_clade) \
+                else (right_clade, left_clade)
+            parent_clade = left_clade | right_clade
+            ccp = partitions_ccp.get(parent_clade, {}).get(split, 0.0)
+            if ccp == 0.0:
+                prob = float("-inf") if use_log else 0.0
+                break
+            if use_log:
+                prob += log(ccp)
+            else:
+                prob *= ccp
+    return float(prob)
+
+
+def get_map_tree(partitions_ccp):
+    # todo rename variables...
+
+    all_clades_sorted = sorted(partitions_ccp.keys(), key=len)
+
+    seen_resolved_clades = {}
+    for cur_clade in all_clades_sorted:
+        assert len(cur_clade) > 2, "Cherries are not relevant for this?"
+        if len(cur_clade) <= 3:
+            # for a triplet we need to simply choose the max
+
+            # todo point out to the user if the max is not unique!!!!
+            cur_clade_split, cur_clade_split_prob = max(partitions_ccp[cur_clade].items(),
+                                                        key=lambda item: item[1])
+
+            assert cur_clade not in seen_resolved_clades, "Triplets should only get into here once"
+            seen_resolved_clades[cur_clade] = CladeSplitInfo(cur_clade_split, cur_clade_split_prob)
+        else:
+            for cur_clade_split, cur_clade_split_prob in partitions_ccp[cur_clade].items():
+                cur_clade_child1, cur_clade_child2 = cur_clade_split
+
+                if len(cur_clade_child1) < 3:
+                    cur_clade_child1_prob = 1.0
                 else:
-                    prob *= ccp
-        return float(prob)
+                    assert cur_clade_child1 in seen_resolved_clades, "This should be impossible"
+                    cur_clade_child1_prob = seen_resolved_clades[cur_clade_child1].prob
 
-    python_probs = {}
-    for i, t in enumerate(trees):
-        python_probs[i] = get_tree_probability(t, partitions_ccp)
-        print(f"tree {i}: {python_probs[i]}")
-    print("Look for mismatches between java and python....")
-    prob_problem = []
-    for k in python_probs.keys():
-        v1 = python_probs[k]
-        v2 = java_tree_probs[k]
-        if abs(v1 - v2) > tolerance:
-            prob_problem.append((k, v1, v2))
-    print(prob_problem)
+                if len(cur_clade_child2) < 3:
+                    cur_clade_child2_prob = 1.0
+                else:
+                    assert cur_clade_child2 in seen_resolved_clades, "This should be impossible"
+                    cur_clade_child2_prob = seen_resolved_clades[cur_clade_child2].prob
+
+                cur_clade_split_map_probabiltiy = (cur_clade_child1_prob * cur_clade_child2_prob *
+                                                   cur_clade_split_prob)
+                if cur_clade in seen_resolved_clades:
+                    if seen_resolved_clades[cur_clade].prob <= cur_clade_split_map_probabiltiy:
+                        seen_resolved_clades[cur_clade] = CladeSplitInfo(
+                            cur_clade_split, cur_clade_split_map_probabiltiy
+                        )
+                else:
+                    seen_resolved_clades[cur_clade] = CladeSplitInfo(
+                        cur_clade_split, cur_clade_split_map_probabiltiy
+                    )
+
+    output = {}
+    working_list = [max(seen_resolved_clades.keys())]
+
+    while working_list:
+        cur_parent = working_list.pop()
+        split, prob = seen_resolved_clades[cur_parent]
+        output[cur_parent] = split
+        for split_child in split:
+            if len(split_child) > 2:
+                working_list.append(split_child)
+
+    return get_tree_from_dict_of_splits(output)
+
+
+def get_tree_from_dict_of_splits(splits):
+    output_tree = Tree(support=0, dist=0, name="root")
+    icount = 1
+
+    def recursive_children(node, new_split):
+        nonlocal splits, icount
+        clade_c1, clade_c2 = new_split
+
+        def add_clade(node, clade):
+            nonlocal icount
+            nonlocal splits
+            n = len(clade)
+            if n == 2:
+                # add two leaf nodes
+                l1, l2 = clade
+                internal = node.add_child(name=f"internal_{icount}", dist=1)
+                icount += 1
+                internal.add_child(name=str(l1), dist=1)
+                internal.add_child(name=str(l2), dist=1)
+            elif n == 1:
+                # add a single leaf node
+                label = next(iter(clade))
+                node.add_child(name=str(label), dist=1)
+            else:
+                c1 = node.add_child(name=f"child_internal_{icount}", dist=1)
+                icount += 1
+                recursive_children(c1, splits[clade])
+
+        add_clade(node, clade_c1)
+        add_clade(node, clade_c2)
+
+    recursive_children(output_tree, splits[max(splits.keys())])
+    return output_tree
 
 
 if __name__ == '__main__':
     from pathlib import Path
 
-    # java_output = {}
-    # with open(f"{Path(__file__).parent.absolute().parent.parent}/tests/data/java_out.txt") as f:
-    #     for line in f:
-    #         if not line.startswith("Dict:"):
-    #             continue
-    #         # _, rest = line.split("Dict:", 1)
-    #         clade_str, prob_str = line.split("Dict:", 1)[1].strip().split(";")
-    #         # bits, prob_str = [p.strip() for p in rest.split(",")]
-    #         clade = frozenset(int(b.strip())+1 for b in clade_str.strip("{").strip("}").split(","))
-    #         java_output[clade] = float(prob_str)
-
     java_tree_probs = {}
-    with open(f"{Path(__file__).parent.absolute().parent.parent}/tests/data/java_probs.out") as f:
-        for line in f:
-            if not line.startswith("Tree "):
-                continue
-            cur_index = int(line.split("=", 1)[0].split(" ")[1])
-            cur_prob = float(line.split("=", 1)[1].strip())
-            java_tree_probs[cur_index] = cur_prob
 
     from pyccd.read_nexus import read_nexus_trees
 
-    tree_file = f"{Path(__file__).parent.absolute().parent.parent}/tests/data/30Taxa.trees"
-    trees = read_nexus_trees(tree_file, breath_trees=False, label_transm_history=False)
-    # trees = trees[int(len(trees)*0.1):]
-    get_ccd0(trees)
+    tree_file = f"{Path(__file__).parent.absolute().parent.parent}/examples/data/30Taxa.trees"
+    trees, taxon_map = read_nexus_trees(tree_file,
+                                        breath_trees=False,
+                                        label_transm_history=False,
+                                        parse_taxon_map=True)
+
+    # todo refactor and make this work for ccd0 and ccd1 to replace the old code
+    # todo compute entropy from this and also compare that to java implementation
+    # todo maybe look at the expansion step and make it a bit faster somehow? profiler needed...
+
+    trees = trees[int(len(trees) * 0.1):]
+    partitions_ccp = get_ccd0(trees)
+
+    map_tree = get_map_tree(partitions_ccp)
+
+    print(map_tree.write(format=5))
