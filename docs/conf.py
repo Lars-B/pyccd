@@ -34,7 +34,7 @@ autodoc_default_options = {
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 html_theme = 'furo'
-html_logo = "magpie.png"
+html_logo = "brokilon.png"
 pygments_style = "tango"
 pygments_dark_style = "monokai"
 
