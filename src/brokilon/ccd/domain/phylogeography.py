@@ -152,9 +152,10 @@ def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None, branch_length_map
     for clade in sorted(geo_ccd_map.keys(), key=len):
         if len(clade) == 2:
             best_split, prob = max(geo_ccd_map[clade].items(), key=lambda item: item[1])
-            ties = [k for k, v in geo_ccd_map[clade].items() if v == prob]
-            if len(ties):
-                print("TIEBREAKING FOR A LEAF IN EFFECT.")
+            # todo handling ties somehow in the MAP tree
+            # ties = [k for k, v in geo_ccd_map[clade].items() if v == prob]
+            # if len(ties):
+                # print("TIEBREAKING FOR A LEAF IN EFFECT.")
             seen_resolved_clades[clade] = CladeSplitInfo(best_split, prob)
         else:
             for split, prob in geo_ccd_map[clade].items():

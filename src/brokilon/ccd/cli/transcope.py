@@ -60,6 +60,9 @@ def main():
 
     if args.verbose:
         print("Parsing input trees...", file=sys.stderr)
+
+    # todo from brokilon.ccd.domain.transmission import read_breath_nexus
+    # todo use read_breath_nexus
     trees = read_nexus_trees(args.input_trees, breath_trees=True)
     trees = trees[int(args.burn_in * len(trees)):]
     if len(trees) < 1:

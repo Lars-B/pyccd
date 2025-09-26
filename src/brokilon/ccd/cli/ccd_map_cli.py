@@ -1,6 +1,6 @@
 import click
 
-from brokilon import read_nexus_trees
+from brokilon.core import read_nexus_trees
 
 
 @click.command()

@@ -68,7 +68,7 @@ if __name__ == '__main__':
     from pathlib import Path
     from brokilon.core.read_nexus import read_nexus_trees
 
-    # tree_file = (f"{Path(__file__).parent.absolute().parent.parent}"
+    # trees_file = (f"{Path(__file__).parent.absolute().parent.parent}"
     #              f"/examples/data/breath32sim.trees")
     tree_file = (f"{Path(__file__).parent.absolute().parent.parent}"
                  f"/examples/data/"
