@@ -6,7 +6,7 @@ from collections import defaultdict
 from decimal import Decimal
 from numpy import random, log
 
-from .tree import Tree
+from brokilon.core import Tree
 
 
 def get_clades(tree: Tree) -> set[frozenset[str]]:

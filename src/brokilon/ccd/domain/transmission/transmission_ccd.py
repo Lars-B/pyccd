@@ -5,11 +5,10 @@ import random
 import warnings
 from collections import defaultdict
 from enum import Enum
-from brokilon.ccd.clades import TransmissionAncestryClade, TransmissionBlockClade, BaseClade
-
 
 import numpy as np
 
+from brokilon.ccd.clades import TransmissionAncestryClade, TransmissionBlockClade, BaseClade
 from brokilon.core import Tree
 
 

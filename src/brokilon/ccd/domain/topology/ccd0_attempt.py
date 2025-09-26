@@ -3,6 +3,7 @@ from math import log
 from typing import Any
 
 from brokilon.core import Tree
+from brokilon.ccd.types import CladeSplitInfo
 
 
 def expand(observed_clades, observed_clade_splits):
@@ -57,8 +58,7 @@ def get_maps_full(trees: list[Tree]) \
     m1 = defaultdict(int)  # map for each clade how often it got sampled
     m2 = defaultdict(int)  # map for each (c1,c2) clade how often this specific relation got sampled
 
-    for ix, t in enumerate(trees):
-
+    for _, t in enumerate(trees):
         for node in t.traverse("levelorder"):
             parent_clade = frozenset(int(leaf.name) for leaf in node)
             m1[parent_clade] += 1
@@ -123,7 +123,7 @@ def get_ccd0(trees):
         for left, right in clade_partitions[clade]:
             left_probability = recursive_prob_computer(left)
             right_probability = recursive_prob_computer(right)
-            product = (left_probability * right_probability)
+            product = left_probability * right_probability
             part_products.append(product)
 
         total = sum(part_products)
@@ -244,7 +244,7 @@ def get_map_tree(partitions_ccp):
 
     while working_list:
         cur_parent = working_list.pop()
-        split, prob = seen_resolved_clades[cur_parent]
+        split, _ = seen_resolved_clades[cur_parent]
         output[cur_parent] = split
         for split_child in split:
             if len(split_child) > 2:
@@ -296,10 +296,7 @@ if __name__ == '__main__':
     from brokilon.core.read_nexus import read_nexus_trees
 
     tree_file = f"{Path(__file__).parent.absolute().parent.parent}/examples/data/30Taxa.trees"
-    trees, taxon_map = read_nexus_trees(tree_file,
-                                        breath_trees=False,
-                                        label_transm_history=False,
-                                        parse_taxon_map=True)
+    trees, taxon_map = read_nexus_trees(tree_file, parse_taxon_map=True)
 
     # todo refactor and make this work for ccd0 and ccd1 to replace the old code
     # todo compute entropy from this and also compare that to java implementation

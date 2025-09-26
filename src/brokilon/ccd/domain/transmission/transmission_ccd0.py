@@ -1,8 +1,8 @@
 from collections import defaultdict
 
-from brokilon.ccd0_attempt import CladeSplitInfo
-from brokilon.transmission_ccd import get_transmission_maps
-from brokilon.tree import Tree
+from brokilon.ccd.types import CladeSplitInfo
+from brokilon.ccd.domain.transmission.transmission_ccd import get_transmission_maps
+from brokilon.core import Tree
 
 
 def compatible(split, parent):
@@ -122,14 +122,14 @@ def expand_tccd0(clade_partitions):
 
 
 def get_transmission_ccd0(trees, expansion: bool = True):
-    m1_observed_clade_counts, m2_observed_clade_split_counts, blockcount_map, branch_lengths_map = (
+    m1_observed_clade_counts, m2_observed_clade_split_counts, _, _ = (
         get_transmission_maps(trees, type_str="Ancestry"))
 
     n_trees = len(trees)
 
     clade_partitions = defaultdict(list)
 
-    for (parent, child1, child2), count in m2_observed_clade_split_counts.items():
+    for (parent, child1, child2), _ in m2_observed_clade_split_counts.items():
         clade_partitions[parent].append((child1, child2))
 
     if expansion:
@@ -159,7 +159,7 @@ def get_transmission_ccd0(trees, expansion: bool = True):
             # print(f"Recursive work for left child done...")
             right_probability = recursive_prob_computer(right)
             # print(f"Recursive work for right child done...")
-            product = (left_probability * right_probability)
+            product = left_probability * right_probability
             part_products.append(product)
 
         total = sum(part_products)
@@ -227,7 +227,7 @@ def get_map_tree(transmission_ccd0_map):
             ta_clade_split, prob = max(tccd0_map[cur_clade].items(), key=lambda item: item[1])
 
             # check if max was unique:
-            ties = [k for k, v in tccd0_map[cur_clade].items() if v == prob]
+            # ties = [k for k, v in tccd0_map[cur_clade].items() if v == prob]
             # if len(ties):
             #     # todo could be annotated here and then if actually used in the MAP tree point it
             #     #  out....
@@ -314,14 +314,12 @@ def get_tree_from_dict_of_splits(splits):
 
 if __name__ == '__main__':
     from pathlib import Path
-    from brokilon import read_nexus_trees
+    from brokilon.core import read_nexus_trees
 
     trees = read_nexus_trees(
         # f"{Path(__file__).parent.absolute().parent.parent}/examples/data/breath32sim.trees",
         # f"{Path(__file__).parent.absolute().parent.parent}/examples/data/roetzer40.trees",
         f"{Path(__file__).parent.absolute().parent.parent}/examples/data/breath32simShort.trees",
-        breath_trees=True,
-        label_transm_history=True
     )
 
     # trees = trees[int(len(trees) * 0.95):]

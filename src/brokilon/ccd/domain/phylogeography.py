@@ -19,12 +19,12 @@ def _find_deme(node, geo_ann_str):
     """
     if node.is_leaf() or len(node.children) == 2:
         return getattr(node, geo_ann_str)
-    else:
-        # find the closest binary node
-        cur_node = node.children[0]
-        while len(cur_node.children) == 1:
-            cur_node = cur_node.children[0]
-        return getattr(cur_node, geo_ann_str)
+
+    # find the closest binary node
+    cur_node = node.children[0]
+    while len(cur_node.children) == 1:
+        cur_node = cur_node.children[0]
+    return getattr(cur_node, geo_ann_str)
 
 
 def get_geo_map(trees, geo_ann_str, ccd_type=1):
@@ -119,9 +119,9 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
             visited = set()
 
             # assigning the frequency of each root to it as a starting probability
-            for clade in clade_count_map.keys():
+            for clade, clade_count in clade_count_map.items():
                 if len(clade) == len(trees[0]):
-                    child_probs[clade] = clade_count_map[clade] / n_trees
+                    child_probs[clade] = clade_count / n_trees
                     queue.append(clade)
                     visited.add(clade)
 
@@ -177,8 +177,8 @@ def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None, branch_length_map
                     seen_resolved_clades[clade] = CladeSplitInfo(split, prob)
 
     output = {}
-    all_root_clades = [k for k in seen_resolved_clades.keys()
-                       if len(k) == len(max(seen_resolved_clades.keys()))]
+    max_key_value = len(max(seen_resolved_clades.keys()))
+    all_root_clades = [k for k in seen_resolved_clades if len(k) == max_key_value]
     max_root_prob = max(seen_resolved_clades[root].prob for root in all_root_clades)
     best_roots = [root for root in all_root_clades
                   if seen_resolved_clades[root].prob == max_root_prob]

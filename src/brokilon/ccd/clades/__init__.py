@@ -4,4 +4,3 @@ from .transmission_ancestry import TransmissionAncestryClade
 from .deme import DemeClade
 
 __all__ = ["BaseClade", "TransmissionBlockClade", "TransmissionAncestryClade", "DemeClade"]
-

@@ -1,5 +1,5 @@
 from brokilon.core.read_nexus import read_nexus_trees
-from brokilon.ccd.domain.transmission import label_transmission_tree
+from brokilon.ccd.domain.transmission.label_transmission_history import label_transmission_tree
 
 
 def read_breath_nexus(file, parse_taxon_map):

@@ -191,7 +191,7 @@ tuple[Any, Any]:
         assert cur_node not in unlabeled_nodes_list, \
             "This node should not be in the unlabeled list!"
         if len(cur_node.children) > 0:
-            added_unknown = False
+            # added_unknown = False
             assert len(cur_node.children) == 2, "Non binary tree found, not supported!"
             child1, child2 = cur_node.children
             # pull down label of parent if children are reachable and unlabeled

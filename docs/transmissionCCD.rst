@@ -1,5 +1,5 @@
 Transmission CCDs
 =================
 
-.. automodule:: pyccd.transmission_ccd
+..automodule:: brokilon.ccd.domain.transmission.transmission_ccd
     :members:

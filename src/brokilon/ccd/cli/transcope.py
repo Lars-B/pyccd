@@ -1,12 +1,14 @@
 """
 Module contains the transcope Command line interface
 """
-import os
 import argparse
+import os
 import sys
 
-from brokilon.core.read_nexus import read_nexus_trees
-from brokilon.transmission_ccd import get_transmission_maps, get_transmission_ccd_tree_bottom_up, TypeCCD
+from brokilon.ccd.domain.transmission import (get_transmission_maps,
+                                              get_transmission_ccd_tree_bottom_up)
+from brokilon.ccd.domain.transmission import read_breath_nexus
+from brokilon.ccd.domain.transmission.transmission_ccd import TypeCCD
 
 
 def main():
@@ -61,9 +63,8 @@ def main():
     if args.verbose:
         print("Parsing input trees...", file=sys.stderr)
 
-    # todo from brokilon.ccd.domain.transmission import read_breath_nexus
-    # todo use read_breath_nexus
-    trees = read_nexus_trees(args.input_trees, breath_trees=True)
+    # todo taxon map should also be handled
+    trees = read_breath_nexus(args.input_trees)
     trees = trees[int(args.burn_in * len(trees)):]
     if len(trees) < 1:
         print("Input trees empty after burn-in removal, maybe burn-in too high?", file=sys.stderr)

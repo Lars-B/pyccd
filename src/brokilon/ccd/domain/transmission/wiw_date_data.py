@@ -6,7 +6,9 @@ import pandas as pd
 import datetime as dt
 
 from brokilon.core.read_nexus import read_nexus_trees
-from brokilon.find_infectors import find_infector_unknown, find_infector_with_data, find_infector
+from brokilon.ccd.domain.transmission.find_infectors import (find_infector_unknown,
+                                                             find_infector_with_data,
+                                                             find_infector)
 
 global SCALE
 # Days per year, i.e. 1.0 float of branch length equals this value
@@ -34,7 +36,7 @@ def extract_date_from_label(taxon_label: str,
         for f in fallback_formats:
             try:
                 return dt.datetime.strptime(parts[1], f).date()
-            except Exception as e:
+            except Exception:
                 continue
     raise ValueError(f"Could not extract date from label {taxon_label}.\n"
                      f"Input for separation was '{sep}' and the date format was '{fmt}'.")
@@ -51,7 +53,7 @@ def get_root_age_from_leafs(tree, taxon_map, sep, fmt):
 
     root_dates = []
     for root_dist, date in scaling_list:
-        root_dates.append(date - timedelta(days=(root_dist * SCALE)))
+        root_dates.append(date - timedelta(days=root_dist * SCALE))
 
     unique_dates = sorted(set(root_dates))
     if len(unique_dates) > 1:
@@ -109,7 +111,8 @@ def extracting_data(tree, taxon_map, sep, fmt):
     #     print(i)
     # print("-----")
     # todo not sure why some nodes are not unique but we can just remove the duplicate events....
-    unique_data = [x for x in {tuple(sublist) for sublist in data_frame}]
+    # unique_data = [x for x in {tuple(sublist) for sublist in data_frame}]
+    unique_data = list({tuple(sublist) for sublist in data_frame})
 
     scaled_data_frame = []
     root_date = get_root_age_from_leafs(tree, taxon_map, sep, fmt)
@@ -168,7 +171,6 @@ def extracting_data(tree, taxon_map, sep, fmt):
 def main(trees_file, output, burn_in, date_sep, date_format):
     trees, taxon_map = read_nexus_trees(
         trees_file,
-        breath_trees=True,
         parse_taxon_map=True
     )
 
