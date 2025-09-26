@@ -1,22 +1,10 @@
 from collections import defaultdict
 from collections import deque
-from dataclasses import dataclass
 from statistics import mean
 
-from brokilon.ccd0_attempt import CladeSplitInfo
-from brokilon.transmission_ccd import BaseClade
-from brokilon.tree import Tree
-
-
-@dataclass(frozen=True)
-class DemeClade(BaseClade):
-    """
-    Clade with a compartment annotation (deme) that indicates a location or similar
-
-    Attributes:
-        deme (string): Indicates a compartment this clade belongs to.
-    """
-    deme: str
+from brokilon.ccd.types import CladeSplitInfo
+from brokilon.core import Tree
+from brokilon.ccd.clades import DemeClade
 
 
 def _find_deme(node, geo_ann_str):
@@ -250,12 +238,9 @@ if __name__ == '__main__':
     from pathlib import Path
     from brokilon.core.read_nexus import read_nexus_trees
 
-    tree_file = (f"{Path(__file__).parent.absolute().parent.parent}/examples/"
+    tree_file = (f"{Path(__file__).parent.absolute().parent.parent.parent.parent}/examples/"
                  f"data/h3n2-bdmm.h3n2_2deme.trees")
-    trees, taxon_map = read_nexus_trees(tree_file,
-                                        breath_trees=False,
-                                        label_transm_history=False,
-                                        parse_taxon_map=True)
+    trees, taxon_map = read_nexus_trees(tree_file, parse_taxon_map=True)
 
     trees = trees[int(len(trees) * 0.1):]
     # geo_ccd_map = get_geo_map(trees, geo_ann_str="type", ccd_type=1)

@@ -1,11 +1,8 @@
 from collections import defaultdict
-from collections import namedtuple
 from math import log
 from typing import Any
 
-from brokilon.tree import Tree
-
-CladeSplitInfo = namedtuple("CladeSplitInfo", ["split", "prob"])
+from brokilon.core import Tree
 
 
 def expand(observed_clades, observed_clade_splits):
