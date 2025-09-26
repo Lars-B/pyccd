@@ -9,7 +9,7 @@ for further processing.
 import collections
 from typing import List, Tuple, Any
 
-from .tree import Tree
+from brokilon.core import Tree
 
 
 def label_transmission_tree(tree):

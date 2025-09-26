@@ -3,7 +3,7 @@ WIP: Module to provide example code for the functions provided in the package.
 """
 from pathlib import Path
 
-from pyccd.read_nexus import read_nexus_trees
+from brokilon.core.read_nexus import read_nexus_trees
 
 
 def read_transmission_nexus():

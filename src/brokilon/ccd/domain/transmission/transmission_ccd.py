@@ -4,13 +4,13 @@ This module contains all the functions relevant for creating transmission CCDs.
 import random
 import warnings
 from collections import defaultdict
-from dataclasses import dataclass
 from enum import Enum
-from functools import total_ordering
+from brokilon.ccd.clades import TransmissionAncestryClade, TransmissionBlockClade, BaseClade
+
 
 import numpy as np
 
-from .tree import Tree
+from brokilon.core import Tree
 
 
 class TypeCCD(Enum):
@@ -24,54 +24,6 @@ class TypeCCD(Enum):
     BLOCKS = "Blocks"
     ANCESTRY = "Ancestry"
     # able to add more in the future
-
-
-@total_ordering
-@dataclass(frozen=True)
-class BaseClade:
-    """
-    Base class representing a clade — a set of taxa/leaves.
-
-    Attributes:
-        clade (frozenset): A frozen set of taxa or node labels in this clade.
-    """
-    clade: frozenset
-
-    def __len__(self) -> int:
-        """Return the number of taxa/nodes in the clade."""
-        return len(self.clade)
-
-    def __lt__(self, other) -> bool:
-        """Compare clade sizes for sorting or ordering."""
-        if isinstance(other, BaseClade):
-            return len(self.clade) < len(other.clade)
-        return NotImplemented
-
-    def __eq__(self, other) -> bool:
-        """Clades are equal if their taxon sets are equal."""
-        return isinstance(other, BaseClade) and self.clade == other.clade
-
-
-@dataclass(frozen=True)
-class TransmissionBlockClade(BaseClade):
-    """
-    Clade with a flag indicating whether a transmission block (event) occurred on the edge.
-
-    Attributes:
-        has_block (bool): Whether this clade was preceded by a block of transmissions.
-    """
-    has_block: bool
-
-
-@dataclass(frozen=True)
-class TransmissionAncestryClade(BaseClade):
-    """
-    Clade with transmission ancestor, i.e. who infected this clade.
-
-    Attributes:
-        transm_ancest (str): Transmission ancestor
-    """
-    transm_ancest: str
 
 
 def get_transmission_maps(trees: list[Tree] | tuple[Tree], type_str: str = "Ancestry") -> tuple:

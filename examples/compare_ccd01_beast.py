@@ -1,11 +1,11 @@
 import subprocess
 from pathlib import Path
 
-from pyccd import read_nexus_trees
-from pyccd.ccd import get_maps
-from pyccd.ccd import get_tree_probability as get_ccd1_tree_probability, get_ccd_tree_bottom_up
-from pyccd.ccd0_attempt import get_ccd0, get_tree_probability, get_map_tree
-from pyccd.tree import TreeNode
+from brokilon import read_nexus_trees
+from brokilon.ccd import get_maps
+from brokilon.ccd import get_tree_probability as get_ccd1_tree_probability, get_ccd_tree_bottom_up
+from brokilon.ccd0_attempt import get_ccd0, get_tree_probability, get_map_tree
+from brokilon.tree import TreeNode
 
 
 def compare_to_java_tree_probs(java_tree_probs, python_tree_probs):

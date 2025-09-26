@@ -5,8 +5,8 @@ import click
 import pandas as pd
 import datetime as dt
 
-from pyccd.read_nexus import read_nexus_trees
-from pyccd.find_infectors import find_infector_unknown, find_infector_with_data, find_infector
+from brokilon.core.read_nexus import read_nexus_trees
+from brokilon.find_infectors import find_infector_unknown, find_infector_with_data, find_infector
 
 global SCALE
 # Days per year, i.e. 1.0 float of branch length equals this value

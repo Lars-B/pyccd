@@ -5,8 +5,8 @@ import os
 import argparse
 import sys
 
-from .read_nexus import read_nexus_trees
-from .transmission_ccd import get_transmission_maps, get_transmission_ccd_tree_bottom_up, TypeCCD
+from brokilon.core.read_nexus import read_nexus_trees
+from brokilon.transmission_ccd import get_transmission_maps, get_transmission_ccd_tree_bottom_up, TypeCCD
 
 
 def main():

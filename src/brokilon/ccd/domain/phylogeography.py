@@ -3,9 +3,9 @@ from collections import deque
 from dataclasses import dataclass
 from statistics import mean
 
-from pyccd.ccd0_attempt import CladeSplitInfo
-from pyccd.transmission_ccd import BaseClade
-from pyccd.tree import Tree
+from brokilon.ccd0_attempt import CladeSplitInfo
+from brokilon.transmission_ccd import BaseClade
+from brokilon.tree import Tree
 
 
 @dataclass(frozen=True)
@@ -248,7 +248,7 @@ def get_tree_from_dict_of_splits(splits, geo_ann_str, taxon_map=None, branch_len
 
 if __name__ == '__main__':
     from pathlib import Path
-    from pyccd.read_nexus import read_nexus_trees
+    from brokilon.core.read_nexus import read_nexus_trees
 
     tree_file = (f"{Path(__file__).parent.absolute().parent.parent}/examples/"
                  f"data/h3n2-bdmm.h3n2_2deme.trees")

@@ -3,7 +3,7 @@ Tests for the transmission_ccd.py functions
 """
 import pytest
 
-from pyccd.transmission_ccd import TypeCCD, get_transmission_maps
+from brokilon.transmission_ccd import TypeCCD, get_transmission_maps
 
 
 def test_valid_enum():

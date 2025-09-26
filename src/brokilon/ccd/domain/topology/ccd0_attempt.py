@@ -3,7 +3,7 @@ from collections import namedtuple
 from math import log
 from typing import Any
 
-from pyccd.tree import Tree
+from brokilon.tree import Tree
 
 CladeSplitInfo = namedtuple("CladeSplitInfo", ["split", "prob"])
 
@@ -296,7 +296,7 @@ if __name__ == '__main__':
 
     java_tree_probs = {}
 
-    from pyccd.read_nexus import read_nexus_trees
+    from brokilon.core.read_nexus import read_nexus_trees
 
     tree_file = f"{Path(__file__).parent.absolute().parent.parent}/examples/data/30Taxa.trees"
     trees, taxon_map = read_nexus_trees(tree_file,

@@ -1,6 +1,6 @@
 import click
 
-from pyccd import read_nexus_trees
+from brokilon import read_nexus_trees
 
 
 @click.command()

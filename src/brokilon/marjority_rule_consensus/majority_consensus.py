@@ -1,7 +1,7 @@
 from collections import defaultdict
 
-from pyccd.phylogeo_ccd import DemeClade
-from pyccd.transmission_ccd import get_transmission_maps
+from brokilon.phylogeography import DemeClade
+from brokilon.transmission_ccd import get_transmission_maps
 
 
 def majority_consensus_annoated(trees):
@@ -66,7 +66,7 @@ def phygeo_mrc(trees, geo_ann_str):
 
 if __name__ == '__main__':
     from pathlib import Path
-    from pyccd.read_nexus import read_nexus_trees
+    from brokilon.core.read_nexus import read_nexus_trees
 
     # tree_file = (f"{Path(__file__).parent.absolute().parent.parent}"
     #              f"/examples/data/breath32sim.trees")

@@ -1,8 +1,8 @@
 from collections import defaultdict
 
-from pyccd.ccd0_attempt import CladeSplitInfo
-from pyccd.transmission_ccd import get_transmission_maps
-from pyccd.tree import Tree
+from brokilon.ccd0_attempt import CladeSplitInfo
+from brokilon.transmission_ccd import get_transmission_maps
+from brokilon.tree import Tree
 
 
 def compatible(split, parent):
@@ -314,7 +314,7 @@ def get_tree_from_dict_of_splits(splits):
 
 if __name__ == '__main__':
     from pathlib import Path
-    from pyccd import read_nexus_trees
+    from brokilon import read_nexus_trees
 
     trees = read_nexus_trees(
         # f"{Path(__file__).parent.absolute().parent.parent}/examples/data/breath32sim.trees",
