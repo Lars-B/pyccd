@@ -34,7 +34,7 @@ def robinson_foulds(tree_t1, tree_t2, attr_t1="name", attr_t2="name"):
 
     # the two root edges are never counted here, as they are always
     # present in both trees because of the common attr filters
-    rf = len((edges1 ^ edges2))
+    rf = len(edges1.symmetric_difference(edges2))
 
     # Otherwise we need to count the actual number of valid
     # partitions in each tree -2 is to avoid counting the root

@@ -33,7 +33,10 @@ def get_clades(tree: Tree) -> set[frozenset[str]]:
             if not opend:
                 raise ValueError("Invalid tree string given! (to many ')')")
             cur = treestr[opend[-1]:i]
-            clades.add(frozenset(re.sub(re_brackets, '', cur).split(',')))
+            new_clade = frozenset(re.sub(re_brackets, '', cur).split(','))
+            if len(new_clade) > 1:
+                # We do not care about leaf clades for topologies.
+                clades.add(new_clade)
             del opend[-1]
     if opend:
         raise ValueError("Invalid tree string given! (to many '(')")
