@@ -7,8 +7,23 @@ def _get_deme_clades(tree, annotation_str):
         # if len(node) > 1:  # this would ignore all leaf and internal nodes
         if len(node.children) != 1:  # this only ingores internal nodes, technically we care
             # about leaf nodes with this distance as they could contribute to it.
-            cur_clade = {int(leaf.name) for leaf in node}
-            clades.add(DemeClade(frozenset(cur_clade), deme=getattr(node, annotation_str)))
+            if not hasattr(node, annotation_str):
+                try:
+                    probs = [x for x in getattr(node, f"{annotation_str}_set_prob").strip("[]\"\'").split(
+                        ",")]
+                    types = [x for x in getattr(node, f"{annotation_str}_set").strip("[]\"\'").split(",")]
+                except Exception:
+                    raise ValueError("Something is wrong with the tree file, likely inconsistent "
+                                     "labels from treeannotator which is infuriatingly stupid!")
+
+                cur_clade = {int(leaf.name) for leaf in node}
+                # this is a bypass, if there is no attribute of the required annotation it will
+                # try to use the set and set prob to extract the most likely one, this is stupid
+                # and all because treeannotoator doesn't annotate at least the leaves (maybe more)
+                clades.add(DemeClade(frozenset(cur_clade), deme=types[probs.index(max(probs))]))
+            else:
+                cur_clade = {int(leaf.name) for leaf in node}
+                clades.add(DemeClade(frozenset(cur_clade), deme=getattr(node, annotation_str)))
     return clades
 
 
