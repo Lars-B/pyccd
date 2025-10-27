@@ -975,7 +975,7 @@ def format_node(node, node_type, format, dist_formatter=None,
         except (ValueError, TypeError):
             SECOND_PART = ":?"
 
-    return "%s%s" % (FIRST_PART, SECOND_PART)
+    return FIRST_PART, SECOND_PART
 
 
 def _get_features_string(self, features=None):
@@ -1021,23 +1021,37 @@ def write_newick(rootnode, features=None, format=1, format_root_node=True,
         if postorder:
             newick.append(")")
             if node.up is not None or format_root_node:
-                newick.append(format_node(node, "internal", format,
-                                          dist_formatter=dist_formatter,
-                                          support_formatter=support_formatter,
-                                          name_formatter=name_formatter,
-                                          quoted_names=quoted_names))
-                newick.append(_get_features_string(node, features))
+                first_part, second_part = format_node(node, "internal", format,
+                                                      dist_formatter=dist_formatter,
+                                                      support_formatter=support_formatter,
+                                                      name_formatter=name_formatter,
+                                                      quoted_names=quoted_names)
+
+                meta_data = _get_features_string(node, features)
+
+                # Writing the newick in a way to be consistent with BEAST
+                newick.append(first_part)
+                newick.append(meta_data)
+                newick.append(second_part)
+
         else:
             if node is not rootnode and node != node.up.children[0]:
                 newick.append(",")
 
             if leaf(node):
-                newick.append(format_node(node, "leaf", format,
-                                          dist_formatter=dist_formatter,
-                                          support_formatter=support_formatter,
-                                          name_formatter=name_formatter,
-                                          quoted_names=quoted_names))
-                newick.append(_get_features_string(node, features))
+                first_part, second_part = format_node(node, "leaf", format,
+                                                      dist_formatter=dist_formatter,
+                                                      support_formatter=support_formatter,
+                                                      name_formatter=name_formatter,
+                                                      quoted_names=quoted_names)
+
+                meta_data = _get_features_string(node, features)
+
+                # Writing the newick in a way to be consistent with BEAST
+                newick.append(first_part)
+                newick.append(meta_data)
+                newick.append(second_part)
+
             else:
                 newick.append("(")
 
