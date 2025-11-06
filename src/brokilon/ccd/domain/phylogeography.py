@@ -2,9 +2,9 @@ from collections import defaultdict
 from collections import deque
 from statistics import mean
 
+from brokilon.ccd.clades import DemeClade
 from brokilon.ccd.types import CladeSplitInfo
 from brokilon.core import Tree
-from brokilon.ccd.clades import DemeClade
 
 
 def _find_deme(node, geo_ann_str):
@@ -77,11 +77,12 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
                 clade_split_count_map[clade][split] /= clade_count_map[clade]
         # convert to a dict to avoid defaultdict behaviour downstream
         return ({clade: dict(splits) for clade, splits in clade_split_count_map.items()},
-                branch_lenghts_map)
+                branch_lenghts_map,
+                clade_count_map)
     elif ccd_type == 0:
         n_trees = len(trees)
 
-        # todo missing expansion for now..
+        # todo missing expansion for now.. not well defined for these?
 
         geo_ccd0_probabilities = {}
 
@@ -142,12 +143,13 @@ def get_geo_map(trees, geo_ann_str, ccd_type=1):
         phygeo_ccd0_map = {}
         for clade in clade_count_map:
             recursive_prob_computer(clade)
-        return phygeo_ccd0_map, branch_lenghts_map
+        return phygeo_ccd0_map, branch_lenghts_map, clade_count_map
     else:
         raise ValueError(f"Unknown ccd_type: {ccd_type}")
 
 
-def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None, branch_length_map={}):
+def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None,
+                     branch_length_map={}, clade_count_map=None):
     seen_resolved_clades = {}
     for clade in sorted(geo_ccd_map.keys(), key=len):
         if len(clade) == 2:
@@ -155,7 +157,7 @@ def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None, branch_length_map
             # todo handling ties somehow in the MAP tree
             # ties = [k for k, v in geo_ccd_map[clade].items() if v == prob]
             # if len(ties):
-                # print("TIEBREAKING FOR A LEAF IN EFFECT.")
+            # print("TIEBREAKING FOR A LEAF IN EFFECT.")
             seen_resolved_clades[clade] = CladeSplitInfo(best_split, prob)
         else:
             for split, prob in geo_ccd_map[clade].items():
@@ -182,11 +184,31 @@ def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None, branch_length_map
     max_root_prob = max(seen_resolved_clades[root].prob for root in all_root_clades)
     best_roots = [root for root in all_root_clades
                   if seen_resolved_clades[root].prob == max_root_prob]
-    if len(best_roots) > 1:
-        raise NotImplementedError("WIP: More than one root clade has max probability, "
-                                  "not implemented...")
 
-    working_list = [best_roots[0]]
+    # TODO This would be a good situation to compute all MAP trees, for all roots?
+    #  then pick the one with the highest overall probability?
+
+    if len(best_roots) > 1:
+        if clade_count_map:
+            most_freq_root = max(best_roots, key=lambda x: clade_count_map[x])
+            if not any(
+                    [clade_count_map[root] == clade_count_map[most_freq_root]
+                     for root in best_roots if root != most_freq_root]
+            ):
+                # checking if there are any other root clades with the same sample frequency
+                working_list = [most_freq_root]
+            else:
+                raise ValueError("The root clade can not be resolved, there are root caldes"
+                                 "with the same CCD probability and the same sampling frequency."
+                                 "There is not method implemented to resolve such a conflict.")
+        else:
+            raise NotImplementedError("There is no way to resolve the root clade,"
+                                      "multiple roots have the same CCD probability,"
+                                      "you can pass the clade_count_map to resolve this based"
+                                      "on the sampling frequency of a clade.")
+    else:
+        # only one root with  the highest probability, easy case
+        working_list = [best_roots[0]]
     while working_list:
         cur_parent = working_list.pop()
         split, prob = seen_resolved_clades[cur_parent]
