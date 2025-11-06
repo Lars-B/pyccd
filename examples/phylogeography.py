@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from brokilon import read_nexus_trees
+from brokilon.core import read_nexus_trees
 
 
 def read_phygeo_nexus():
