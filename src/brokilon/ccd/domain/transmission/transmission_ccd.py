@@ -74,10 +74,13 @@ def get_transmission_maps(trees: list[Tree] | tuple[Tree], type_str: str = "Ance
         elif len(node) == 1:
             assert node.is_leaf(), "Should be a leaf node!"
             # leaf node for which we need to add the blockcount to the blockcount_map
-            blockcount_map, branch_lengths_map = _add_leaf_clade(node, ccd_type,
-                                                                 blockcount_map,
-                                                                 branch_lengths_map)
+            blockcount_map, branch_lengths_map, leaf_clade = _add_leaf_clade(node, ccd_type,
+                                                                             blockcount_map,
+                                                                             branch_lengths_map)
+            # counting leaf clade occurences too
+            m1[leaf_clade] += 1
 
+    # todo make m1 and m2 not default dicts anymore....
     return m1, m2, blockcount_map, branch_lengths_map
 
 
@@ -165,7 +168,7 @@ def _add_leaf_clade(node, ccd_type: TypeCCD, blockcount_map: dict,
         blockcount_map[leaf_clade].append(node.blockcount)
     # Adding the branch length to the branch_length_map
     branch_lengths_map[leaf_clade].append(node.dist)
-    return blockcount_map, branch_lengths_map
+    return blockcount_map, branch_lengths_map, leaf_clade
 
 
 def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
@@ -208,8 +211,23 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
             assert (len(child2) == 1 or child2 in seen_resolved_clades), \
                 "child2 should be in seen_resolved_clades when its length > 1"
 
-            c1_prob = 1 if len(child1) == 1 else seen_resolved_clades[child1][0]
-            c2_prob = 1 if len(child2) == 1 else seen_resolved_clades[child2][0]
+            # c1_prob = 1 if len(child1) == 1 else seen_resolved_clades[child1][0]
+            # c2_prob = 1 if len(child2) == 1 else seen_resolved_clades[child2][0]
+
+            if len(child1) == 1:
+                # This number should always be number of trees,
+                # but we currently don't have it here...
+                leaf_observations = sum([m1[k] for k in m1.keys() if k.clade == child1.clade])
+                c1_prob = m1[child1] / leaf_observations
+            else:
+                c1_prob = seen_resolved_clades[child1][0]
+
+            if len(child2) == 1:
+                # same as for child1 above...
+                leaf_observations = sum([m1[k] for k in m1.keys() if k.clade == child2.clade])
+                c2_prob = m1[child2] / leaf_observations
+            else:
+                c2_prob = seen_resolved_clades[child2][0]
 
             # cur_prob = m2[current_split] / m1[current_split[0]]
             split_prob = c1_prob * c2_prob * (
@@ -235,7 +253,20 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
                                                        current_split, False)
 
     # construct the root clade and build a tree dict
-    root_clade = max(seen_resolved_clades.keys())
+    root_length = len(max(seen_resolved_clades.keys()))
+    all_root_clades = [k for k in seen_resolved_clades.keys() if len(k) == root_length]
+    # todo picking the most frequent sampled scenario at the root.. might need different handling?
+    most_freq_root = max(all_root_clades, key=lambda root: m1.get(root))
+    # max_root_prob = max(m1[root] for root in all_root_clades)
+    # best_roots = [root for root in all_root_clades if seen_resolved_clades[root][0] == max_root_prob]
+
+    # if len(best_roots) > 1:
+    #     raise NotImplementedError("Currently no tie breaking for multiple roots "
+    #                               "with equal probability.")
+
+    # This is now the best root, based on frequency of observation
+    root_clade = most_freq_root
+
     output = _build_tree_dict_from_clade_splits(root_clade,
                                                 seen_resolved_clades)
 
