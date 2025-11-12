@@ -64,11 +64,16 @@ def read_nexus_trees(file: str, parse_taxon_map: bool = False) \
 
                     # temporary fix to the inconsistent use of . and _ in beast treeannotator....
                     # todo the type here can be any string i believe so I might have to change it
-                    #  furter....
+                    #  further....
                     for old, new in [("type.prob", "type_prob"),
                                      ("type.set.prob", "type_set_prob"),
                                      ("type.set", "type_set"),]:
                         full_str = full_str.replace(old, new)
+
+                    # replacing the Sequence annotations that are present in BREATH trees...
+                    some_data_annotation = r"(\.[A-Za-z_]+:[A-Za-z]+)[_=]"
+                    full_str = re.sub(some_data_annotation, lambda m: m.group(0).replace(m.group(1), ""),
+                           full_str)
 
                     split_str = full_str.split("[", 1)
                     if not split_str[0]:
