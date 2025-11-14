@@ -1,24 +1,25 @@
 import os
 from pathlib import Path
 
+from brokilon.ccd import read_breath_nexus
 from brokilon.ccd.domain.phylogeography import get_geo_map, get_geo_map_tree
 from brokilon.core import read_nexus_trees
 
 
-if __name__ == '__main__':
-    trees = read_nexus_trees(
+def phylgeo_example():
+    posterior = read_nexus_trees(
         os.path.join(
             Path(__file__).parent.absolute(),
             "data/motivating_example.trees"
         )
     )
 
-    print(len(trees))
-    counts = {1: 4, 2: 2, 3: 2, 4: 1, 5: 1}
-    posterior = [trees[i] for i in range(len(trees)) for k in range(counts[i+1])]
+    print(len(posterior))
+    # counts = {1: 4, 2: 2, 3: 2, 4: 1, 5: 1}
+    # posterior = [trees[i] for i in range(len(trees)) for k in range(counts[i+1])]
 
     # todo think about ccd0 too... is there a difference?
-    geo_ccd_map, branch_lenghts_map, clade_count_map = (
+    geo_ccd_map, branch_lengths_map, clade_count_map = (
         get_geo_map(posterior, geo_ann_str="type", ccd_type=1)
     )
     geo_ccd_map_tree = (
@@ -46,4 +47,57 @@ if __name__ == '__main__':
 
     # todo can I reimplement the function to get all represented trees from a CCD?
     # todo implement the sample form the CCD function....
+    from brokilon.ccd.domain.phylogeography import get_all_trees_represented
+    all_trees_represented = get_all_trees_represented(geo_ccd_map)
 
+
+def breath_example():
+    posterior = read_breath_nexus(
+        os.path.join(
+            Path(__file__).parent.absolute(),
+            # "data/basic_motivating_example_breath.trees"
+            "data/motivating_example_breath.trees"
+        ),
+        parse_taxon_map=False
+    )
+
+    print(len(posterior))
+
+    from brokilon.ccd.domain.transmission import get_transmission_maps, \
+        get_transmission_ccd_tree_bottom_up
+
+    m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(posterior,
+                                                                       type_str="Ancestry")
+    newick_map = get_transmission_ccd_tree_bottom_up(
+        m1,
+        m2,
+        blockcount_map,
+        branch_lengths_map,
+        seed=1337
+    )
+
+    print("Transmission CCD1 map:")
+    print(newick_map)
+    print("-------")
+
+    beast_ccd1_tree = read_breath_nexus(
+        os.path.join(
+            Path(__file__).parent.absolute(),
+            # "data/basic_motivating_breath_ccd1_beast.tree"
+            "data/motivating_breath_ccd1_beast.tree"
+        ),
+        False
+    )[0]
+    print("topo CCD1 map:")
+    print(
+        beast_ccd1_tree.write(
+            format=5,
+            features=["blockcount", "blockcount_median"],
+            format_root_node=True
+        )
+    )
+
+
+if __name__ == '__main__':
+    # phylgeo_example()
+    breath_example()

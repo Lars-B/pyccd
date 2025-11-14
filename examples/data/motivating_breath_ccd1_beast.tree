@@ -1,0 +1,20 @@
+#NEXUS
+
+Begin taxa;
+	Dimensions ntax=4;
+		Taxlabels
+			A
+			B
+			C
+			D
+			;
+End;
+Begin trees;
+	Translate
+		     1 A,
+		     2 B,
+		     3 C,
+		     4 D
+;
+tree TREE_CCD1_CA = (((1[&CAheight_95%_HPD={0.0,1.0},CAheight_mean=0.25,CAheight_median=0.0,CAheight_range={0.0,1.0},blockcount.t:bla=-0.75,blockcount.t:bla_95%_HPD={-1.0,0.0},blockcount.t:bla_median=-1.0,blockcount.t:bla_range={-1.0,0.0},height=0.25,height_95%_HPD={0.0,1.0},height_median=0.0,height_range={0.0,1.0},length=1.0,posterior=1.0]:1.25,3[&blockcount.t:bla=0.25,blockcount.t:bla_95%_HPD={0.0,1.0},blockcount.t:bla_median=0.0,blockcount.t:bla_range={0.0,1.0},height=0.0,length=1.0,posterior=1.0]:1.5)[&CAheight_95%_HPD={1.0,2.0},CAheight_mean=1.5,CAheight_median=1.5,CAheight_range={1.0,2.0},blockcount.t:bla=0.0,height=1.0,length=1.0,posterior=0.5]:0.5,2[&CAheight_95%_HPD={0.0,1.0},CAheight_mean=0.5,CAheight_median=0.5,CAheight_range={0.0,1.0},blockcount.t:bla=-0.5,blockcount.t:bla_95%_HPD={-1.0,0.0},blockcount.t:bla_median=-0.5,blockcount.t:bla_range={-1.0,0.0},height=0.5,height_95%_HPD={0.0,1.0},height_median=0.5,height_range={0.0,1.0},length=1.0,posterior=1.0]:1.5)[&blockcount.t:bla=0.0,height=2.0,length=1.0,posterior=0.75]:0.75,4[&CAheight_95%_HPD={0.0,2.0},CAheight_mean=1.5,CAheight_median=2.0,CAheight_range={0.0,2.0},blockcount.t:bla=-0.75,blockcount.t:bla_95%_HPD={-1.0,0.0},blockcount.t:bla_median=-1.0,blockcount.t:bla_range={-1.0,0.0},height=1.5,height_95%_HPD={0.0,2.0},height_median=2.0,height_range={0.0,2.0},length=1.0,posterior=1.0]:1.25)[&CAheight_95%_HPD={2.0,3.0},CAheight_mean=2.75,CAheight_median=3.0,CAheight_range={2.0,3.0},blockcount.t:bla=-0.75,blockcount.t:bla_95%_HPD={-1.0,0.0},blockcount.t:bla_median=-1.0,blockcount.t:bla_range={-1.0,0.0},height=2.75,height_95%_HPD={2.0,3.0},height_median=3.0,height_range={2.0,3.0},length=0.0,posterior=1.0]:0.0;
+End;

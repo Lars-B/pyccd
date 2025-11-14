@@ -1,0 +1,18 @@
+#NEXUS
+
+Begin taxa;
+	Dimensions ntax=3;
+		Taxlabels
+			A
+			B
+			C
+			;
+End;
+Begin trees;
+	Translate
+		     1 A,
+		     2 B,
+		     3 C
+;
+tree TREE_CCD1_CA = (1[&blockcount.t:bla=-0.5,blockcount.t:bla_95%_HPD={-1.0,0.0},blockcount.t:bla_median=-0.5,blockcount.t:bla_range={-1.0,0.0},height=1.0,length=1.0,posterior=1.0]:1.0,(2[&blockcount.t:bla=-0.25,blockcount.t:bla_95%_HPD={-1.0,0.0},blockcount.t:bla_median=0.0,blockcount.t:bla_range={-1.0,0.0},height=0.0,length=1.0,posterior=1.0]:1.0,3[&blockcount.t:bla=-0.5,blockcount.t:bla_95%_HPD={-1.0,0.0},blockcount.t:bla_median=-0.5,blockcount.t:bla_range={-1.0,0.0},height=0.0,length=1.0,posterior=1.0]:1.0)[&blockcount.t:bla=-0.5,blockcount.t:bla_95%_HPD={-1.0,0.0},blockcount.t:bla_median=-0.5,blockcount.t:bla_range={-1.0,0.0},height=1.0,length=1.0,posterior=1.0]:1.0)[&blockcount.t:bla=-1.0,height=2.0,length=0.0,posterior=1.0]:0.0;
+End;
