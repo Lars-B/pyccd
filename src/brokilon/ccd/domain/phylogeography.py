@@ -163,6 +163,9 @@ def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None,
             for split, prob in geo_ccd_map[clade].items():
                 split_c1, split_c2 = split
                 if len(split_c1) == 1:
+                    # This is fine if the leafs are all annotated with the same state,
+                    # otherwise this needs to be changed to
+                    # observed leaf with specific annotation / number of trees
                     c1_prob = 1.0
                 else:
                     c1_prob = seen_resolved_clades[split_c1].prob
@@ -255,6 +258,28 @@ def get_tree_from_dict_of_splits(splits, geo_ann_str, taxon_map=None, branch_len
     recursive_children(output_tree, splits[root])
 
     return output_tree
+
+
+def get_all_trees_represented(geo_ccd_map):
+    # todo implement this mostly for the motivating example
+    # todo how do we do this?
+    print("help me...")
+
+    # start with a list of all roots
+
+    # have a working list of currently up to this point resolved things
+    # have a list of fully resolved trees
+
+    # take one of the up to now resolved things
+    # add to the new working list all ways this one can be resolved
+    # move on to the next previously resolved thing and repeat until list is empty
+    # then update the list until all things are fully resolved
+
+    # todo probably two nested while loops, one for currently unresolved
+    #  the other over the previously resolved things
+    #  if something gets resolved fully in one step then it will be added to results
+
+    return None
 
 
 if __name__ == '__main__':
