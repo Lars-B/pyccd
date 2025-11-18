@@ -63,7 +63,6 @@ def main():
     if args.verbose:
         print("Parsing input trees...", file=sys.stderr)
 
-    # todo taxon map should also be handled
     trees = read_breath_nexus(args.input_trees)
     trees = trees[int(args.burn_in * len(trees)):]
     if len(trees) < 1:
