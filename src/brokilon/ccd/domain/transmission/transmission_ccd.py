@@ -8,7 +8,8 @@ from enum import Enum
 
 import numpy as np
 
-from brokilon.ccd.clades import TransmissionAncestryClade, TransmissionBlockClade, BaseClade
+from brokilon.ccd.clades import TransmissionAncestryClade, \
+    TransmissionBlockClade, BaseClade
 from brokilon.core import Tree
 
 
@@ -25,7 +26,8 @@ class TypeCCD(Enum):
     # able to add more in the future
 
 
-def get_transmission_maps(trees: list[Tree] | tuple[Tree], type_str: str = "Ancestry") -> tuple:
+def get_transmission_maps(trees: list[Tree] | tuple[Tree],
+                          type_str: str = "Ancestry") -> tuple:
     """
     Extracts all the relevant information from a list of Tree objects.
     The maps m1 and m2 are used as in the Larget approach for CCD1.
@@ -74,14 +76,23 @@ def get_transmission_maps(trees: list[Tree] | tuple[Tree], type_str: str = "Ance
         elif len(node) == 1:
             assert node.is_leaf(), "Should be a leaf node!"
             # leaf node for which we need to add the blockcount to the blockcount_map
-            blockcount_map, branch_lengths_map, leaf_clade = _add_leaf_clade(node, ccd_type,
-                                                                             blockcount_map,
-                                                                             branch_lengths_map)
+            blockcount_map, branch_lengths_map, leaf_clade = (
+                _add_leaf_clade(
+                    node,
+                    ccd_type,
+                    blockcount_map,
+                    branch_lengths_map
+                )
+            )
             # counting leaf clade occurences too
             m1[leaf_clade] += 1
 
     # todo make m1 and m2 not default dicts anymore....
     return m1, m2, blockcount_map, branch_lengths_map
+
+
+def _sanitize_transm_ancest(transm_ancest: str) -> str:
+    return "Unknown" if transm_ancest.startswith("Unknown") else transm_ancest
 
 
 def _add_internal_clade(node, ccd_type, blockcount_map: dict,
@@ -115,16 +126,20 @@ def _add_internal_clade(node, ccd_type, blockcount_map: dict,
                                                   node.children[
                                                       1].blockcount != -1)
         case TypeCCD.ANCESTRY:
-            def sanitize_transm_ancest(transm_ancest: str) -> str:
-                return "Unknown" if transm_ancest.startswith("Unknown") else transm_ancest
+            parent_transm_ancest = _sanitize_transm_ancest(node.transm_ancest)
+            child0_transm_ancest = (
+                _sanitize_transm_ancest(node.children[0].transm_ancest)
+            )
+            child1_transm_ancest = (
+                _sanitize_transm_ancest(node.children[1].transm_ancest)
+            )
 
-            parent_transm_ancest = sanitize_transm_ancest(node.transm_ancest)
-            child0_transm_ancest = sanitize_transm_ancest(node.children[0].transm_ancest)
-            child1_transm_ancest = sanitize_transm_ancest(node.children[1].transm_ancest)
-
-            parent_clade = TransmissionAncestryClade(parent_clade_set, parent_transm_ancest)
-            child0_clade = TransmissionAncestryClade(frozenset(c0_leafs), child0_transm_ancest)
-            child1_clade = TransmissionAncestryClade(frozenset(c1_leafs), child1_transm_ancest)
+            parent_clade = TransmissionAncestryClade(parent_clade_set,
+                                                     parent_transm_ancest)
+            child0_clade = TransmissionAncestryClade(frozenset(c0_leafs),
+                                                     child0_transm_ancest)
+            child1_clade = TransmissionAncestryClade(frozenset(c1_leafs),
+                                                     child1_transm_ancest)
         case _:
             raise ValueError(f"Unknown type given: {ccd_type}")
 
@@ -155,11 +170,16 @@ def _add_leaf_clade(node, ccd_type: TypeCCD, blockcount_map: dict,
     """
     match ccd_type:
         case TypeCCD.BLOCKS:
-            leaf_clade = TransmissionBlockClade(frozenset({int(node.name)}),
-                                                (node.blockcount != -1))
+            leaf_clade = TransmissionBlockClade(
+                frozenset({int(node.name)}),
+                (node.blockcount != -1)
+            )
         case TypeCCD.ANCESTRY:
-            leaf_clade = TransmissionAncestryClade(frozenset({int(node.name)}),
-                                                   node.transm_ancest)
+            leaf_transm_ancest = _sanitize_transm_ancest(node.transm_ancest)
+            leaf_clade = TransmissionAncestryClade(
+                frozenset({int(node.name)}),
+                leaf_transm_ancest
+            )
         case _:
             raise ValueError(f"Unknown type given: {ccd_type}")
 
@@ -217,14 +237,16 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
             if len(child1) == 1:
                 # This number should always be number of trees,
                 # but we currently don't have it here...
-                leaf_observations = sum([m1[k] for k in m1.keys() if k.clade == child1.clade])
+                leaf_observations = sum(
+                    [m1[k] for k in m1.keys() if k.clade == child1.clade])
                 c1_prob = m1[child1] / leaf_observations
             else:
                 c1_prob = seen_resolved_clades[child1][0]
 
             if len(child2) == 1:
                 # same as for child1 above...
-                leaf_observations = sum([m1[k] for k in m1.keys() if k.clade == child2.clade])
+                leaf_observations = sum(
+                    [m1[k] for k in m1.keys() if k.clade == child2.clade])
                 c2_prob = m1[child2] / leaf_observations
             else:
                 c2_prob = seen_resolved_clades[child2][0]
@@ -244,9 +266,11 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
                         chosen_prob, chosen_split = split_prob, current_split
                     else:
                         # choose the old split
-                        chosen_prob, chosen_split = seen_resolved_clades[current_clade][:2]
+                        chosen_prob, chosen_split = seen_resolved_clades[
+                            current_clade][:2]
                     # Thrid entry True because tiebreaking is in effect for this split.
-                    seen_resolved_clades[current_clade] = (chosen_prob, chosen_split, True)
+                    seen_resolved_clades[current_clade] = (chosen_prob,
+                                                           chosen_split, True)
 
             else:
                 seen_resolved_clades[current_clade] = (split_prob,
@@ -254,18 +278,30 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
 
     # construct the root clade and build a tree dict
     root_length = len(max(seen_resolved_clades.keys()))
-    all_root_clades = [k for k in seen_resolved_clades.keys() if len(k) == root_length]
-    # todo picking the most frequent sampled scenario at the root.. might need different handling?
-    most_freq_root = max(all_root_clades, key=lambda root: m1.get(root))
-    # max_root_prob = max(m1[root] for root in all_root_clades)
-    # best_roots = [root for root in all_root_clades if seen_resolved_clades[root][0] == max_root_prob]
+    all_root_clades = [k for k in seen_resolved_clades if
+                       len(k) == root_length]
+    max_root_prob = max(
+        seen_resolved_clades[root][0] for root in all_root_clades)
+    best_roots = [root for root in all_root_clades
+                  if seen_resolved_clades[root][0] == max_root_prob]
 
-    # if len(best_roots) > 1:
-    #     raise NotImplementedError("Currently no tie breaking for multiple roots "
-    #                               "with equal probability.")
+    if len(best_roots) > 1:
+        print("There are multiple MAP trees with the same probability. "
+              "Tie breaker is frequency of root clade...")
+        most_freq_root = max(best_roots, key=lambda x: m1[x])
+        if not any(
+                [m1[root] == m1[most_freq_root]
+                 for root in best_roots if root != most_freq_root]
+        ):
+            # checking if there are any other root clades with the same sample frequency
+            root_clade = most_freq_root
+        else:
+            raise ValueError("Tie breaking failed, multiple MAP trees exists "
+                             "with same root clade frequency.")
 
-    # This is now the best root, based on frequency of observation
-    root_clade = most_freq_root
+    else:
+        # only one root with highest probability
+        root_clade = best_roots[0]
 
     output = _build_tree_dict_from_clade_splits(root_clade,
                                                 seen_resolved_clades)
