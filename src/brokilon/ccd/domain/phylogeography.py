@@ -155,6 +155,7 @@ def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None,
         if len(clade) == 2:
             best_split, prob = max(geo_ccd_map[clade].items(), key=lambda item: item[1])
             # todo handling ties somehow in the MAP tree
+            #  (see transmission stuff)
             # ties = [k for k, v in geo_ccd_map[clade].items() if v == prob]
             # if len(ties):
             # print("TIEBREAKING FOR A LEAF IN EFFECT.")
@@ -261,25 +262,72 @@ def get_tree_from_dict_of_splits(splits, geo_ann_str, taxon_map=None, branch_len
 
 
 def get_all_trees_represented(geo_ccd_map):
-    # todo implement this mostly for the motivating example
-    # todo how do we do this?
+    # todo make a count only function too....?
+    working_list_all_trees = {}
+
+    for clade in sorted(geo_ccd_map.keys(), key=len):
+
+        if len(clade) == 2:
+            # assuming the leaf labels are fixed,
+            # otherwise this probably will need to be handled differently!!!
+            # working_list_all_trees[clade] = (
+            #     [k for k in geo_ccd_map[clade].keys()]
+            # )
+            # todo work out the cherry case to build trees properly...
+            #  best to add them here to avoid multiple loopings....
+            continue
+        elif len(clade) == 3:
+            all_current_splits = [k for k in geo_ccd_map[clade].keys()]
+            working_list_all_trees[clade] = (
+                [split for split in all_current_splits]
+            )
+        else:
+            all_current_splits = [k for k in geo_ccd_map[clade].keys()]
+
+            for child1, child2 in all_current_splits:
+                current_root = {clade: (child1, child2)}
+                if len(child1) > 2:
+                    all_c1_subtrees = working_list_all_trees[child1]
+                else:
+                    # todo this is wrong...
+                    all_c1_subtrees = [k for k in geo_ccd_map[child2].keys()]
+
+                partial_tree_list = []
+                for c1split in all_c1_subtrees:
+                    extended = current_root.copy()
+                    extended[child1] = c1split
+                    partial_tree_list.append(extended)
+
+                if len(child2) > 2:
+                    all_c2_subtrees = working_list_all_trees[child2]
+                else:
+                    # todo this is wrong...
+                    all_c2_subtrees = [k for k in geo_ccd_map[child2].keys()]
+
+                full_tree_list = []
+
+                for c2split in all_c2_subtrees:
+                    for partial in partial_tree_list:
+                        to_be_made_full = partial.copy()
+                        to_be_made_full[child2] = c2split
+                        full_tree_list.append(to_be_made_full)
+                if clade in working_list_all_trees:
+                    working_list_all_trees[clade].extend(full_tree_list)
+                else:
+                    working_list_all_trees[clade] = full_tree_list
+
+    n_taxa = max(len(k) for k in working_list_all_trees)
+    all_roots = [k for k in working_list_all_trees if len(k) == n_taxa]
+    # todo missing cherries but otherwise we should be able to call this:
+    example_tree = (
+        get_tree_from_dict_of_splits(working_list_all_trees[all_roots[1]][1])
+    )
+
     print("help me...")
-
-    # start with a list of all roots
-
-    # have a working list of currently up to this point resolved things
-    # have a list of fully resolved trees
-
-    # take one of the up to now resolved things
-    # add to the new working list all ways this one can be resolved
-    # move on to the next previously resolved thing and repeat until list is empty
-    # then update the list until all things are fully resolved
-
-    # todo probably two nested while loops, one for currently unresolved
-    #  the other over the previously resolved things
-    #  if something gets resolved fully in one step then it will be added to results
-
-    return None
+    # todo convert to trees and output list of trees.
+    # todo implement function to just count number of trees,
+    #  should be much easier...
+    return []
 
 
 if __name__ == '__main__':

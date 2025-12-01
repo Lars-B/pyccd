@@ -47,8 +47,8 @@ def phylgeo_example():
 
     # todo can I reimplement the function to get all represented trees from a CCD?
     # todo implement the sample form the CCD function....
-    # from brokilon.ccd.domain.phylogeography import get_all_trees_represented
-    # all_trees_represented = get_all_trees_represented(geo_ccd_map)
+    from brokilon.ccd.domain.phylogeography import get_all_trees_represented
+    all_trees_represented = get_all_trees_represented(geo_ccd_map)
 
 
 def breath_example(basic=False):
@@ -106,6 +106,6 @@ def breath_example(basic=False):
 
 
 if __name__ == '__main__':
-    # phylgeo_example()
+    phylgeo_example()
     # breath_example()
-    breath_example(basic=True)
+    # breath_example(basic=True)
