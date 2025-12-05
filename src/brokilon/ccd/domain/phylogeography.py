@@ -190,7 +190,6 @@ def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None,
                   if seen_resolved_clades[root].prob == max_root_prob]
 
     # TODO This would be a good situation to compute all MAP trees, for all roots?
-    #  then pick the one with the highest overall probability?
 
     if len(best_roots) > 1:
         if clade_count_map:

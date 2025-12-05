@@ -32,6 +32,11 @@ def common_options(func):
         default=None,
         help="Path to save the CCD-MAP tree"
     )(func)
+    func = click.option(
+        "--verbose",
+        is_flag=True,
+        default=False,
+    )(func)
     return func
 
 

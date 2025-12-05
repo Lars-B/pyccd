@@ -9,7 +9,7 @@ from collections import defaultdict
 from brokilon.core.tree import Tree
 
 
-def read_nexus_trees(file: str, parse_taxon_map: bool = False) \
+def read_nexus_trees(file, parse_taxon_map: bool = False) \
         -> list[Tree] | tuple[list[Tree], dict[str, str]]:
     """
     Function to read a nexus file that contains transmission trees.
@@ -21,6 +21,7 @@ def read_nexus_trees(file: str, parse_taxon_map: bool = False) \
     also disabled.
 
     :param file: Input file
+    :param parse_taxon_map: If true returns tuple of trees and taxon map
     :returns: list of trees with metadata annotation, optionally also a taxon map as dict
     """
     # re_tree returns nwk string without the root height and no ; in the end
