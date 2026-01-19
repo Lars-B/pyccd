@@ -45,7 +45,8 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose):
     map_tree = get_geo_map_tree(
         geo_ccd_map,
         geo_ann_str="type",
-        taxon_map=taxon_map,
+        # taxon_map=taxon_map,
+        taxon_map=None if output_file else taxon_map,
         branch_length_map=branch_length_map,
         clade_count_map=clade_count_map
     )
