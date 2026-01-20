@@ -39,8 +39,8 @@ def robinson_foulds(tree_t1, tree_t2, attr_t1="name", attr_t2="name"):
     # Otherwise we need to count the actual number of valid
     # partitions in each tree -2 is to avoid counting the root
     # partition of the two trees (only needed in rooted trees)
-    max_parts = (sum(1 for p in edges1 if len(p) > 1) +
-                 sum(1 for p in edges2 if len(p) > 1) - 2)
+    # max_parts = (sum(1 for p in edges1 if len(p) > 1) +
+    #              sum(1 for p in edges2 if len(p) > 1) - 2)
 
     # min_comparison = (rf, max_parts, edges1, edges2)
     return rf

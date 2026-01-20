@@ -217,13 +217,20 @@ def get_geo_map_tree(geo_ccd_map, geo_ann_str, taxon_map=None,
         split, prob = seen_resolved_clades[cur_parent]
         output[cur_parent] = split
         working_list.extend(child for child in split if len(child) > 1)
-    return get_tree_from_dict_of_splits(output, geo_ann_str, taxon_map, branch_length_map)
+    return get_tree_from_dict_of_splits(
+        output, geo_ann_str, geo_ccd_map, taxon_map, branch_length_map
+    )
 
 
-def get_tree_from_dict_of_splits(splits, geo_ann_str, taxon_map=None, branch_length_map={}):
+def get_tree_from_dict_of_splits(
+        splits, geo_ann_str,
+        geo_ccd_map,
+        taxon_map=None,
+        branch_length_map={}
+):
     root = max(splits.keys())
 
-    output_tree = Tree(support=0,
+    output_tree = Tree(support=geo_ccd_map[root][splits[root]],
                        dist=mean(branch_length_map[root]) if branch_length_map else 0,
                        name="root")
 
@@ -231,22 +238,26 @@ def get_tree_from_dict_of_splits(splits, geo_ann_str, taxon_map=None, branch_len
     icount = 1
 
     def recursive_children(node, new_split):
-        nonlocal icount, splits, branch_length_map
+        nonlocal icount, splits, branch_length_map, geo_ccd_map
         c1, c2 = new_split
 
         def add_clade(node, clade):
-            nonlocal icount, splits
+            nonlocal icount, splits, geo_ccd_map
             if len(clade) == 1:
                 label = taxon_map[next(iter(clade.clade))] if taxon_map else next(iter(clade.clade))
                 leaf = node.add_child(
                     name=str(label),
-                    dist=mean(branch_length_map.get(clade, [1]))
+                    dist=mean(branch_length_map.get(clade, [1])),
+                    # Currently 1.0 because we assume leafs are always fixed in their annotation
+                    # geo_ccd_map[clade][splits[clade]]
+                    support=1.0
                 )
                 leaf.add_feature(geo_ann_str, clade.deme)
             else:
                 internal_node = node.add_child(
                     name=f"internal_{icount}",
-                    dist=mean(branch_length_map.get(clade, [1]))
+                    dist=mean(branch_length_map.get(clade, [1])),
+                    support=geo_ccd_map[clade][splits[clade]]
                 )
                 internal_node.add_feature(geo_ann_str, clade.deme)
                 icount += 1
@@ -339,7 +350,7 @@ if __name__ == '__main__':
 
     trees = trees[int(len(trees) * 0.1):]
     # geo_ccd_map = get_geo_map(trees, geo_ann_str="type", ccd_type=1)
-    geo_ccd_map, branch_length_map = get_geo_map(trees, geo_ann_str="type", ccd_type=0)
+    geo_ccd_map, branch_length_map, _ = get_geo_map(trees, geo_ann_str="type", ccd_type=0)
 
     map_tree = get_geo_map_tree(geo_ccd_map, geo_ann_str="type",
                                 taxon_map=taxon_map,

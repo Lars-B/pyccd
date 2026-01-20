@@ -28,9 +28,7 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose):
     if verbose:
         click.echo("Computing CCD graph and probabilities...")
 
-
     # todo this needs to be optimized or somehow made to work, shouldn't take thiiiis long?
-
     # Compute geo map and branch lengths
     geo_ccd_map, branch_length_map, clade_count_map = get_geo_map(
         trees, geo_ann_str="type", ccd_type=ccd_type
@@ -45,13 +43,13 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose):
     map_tree = get_geo_map_tree(
         geo_ccd_map,
         geo_ann_str="type",
-        # taxon_map=taxon_map,
         taxon_map=None if output_file else taxon_map,
         branch_length_map=branch_length_map,
         clade_count_map=clade_count_map
     )
 
-    newick_map = map_tree.write(format=5, features=["type"], format_root_node=True)
+    # todo possibly rename support to ccd-prob or something...
+    newick_map = map_tree.write(format=5, features=["type", "support"], format_root_node=True)
 
     # todo fix naming here, output file and output file stream, check for if exists stuff etc...
     if output_file:
