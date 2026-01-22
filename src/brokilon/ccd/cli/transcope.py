@@ -1,97 +1,95 @@
 """
 Module contains the transcope Command line interface
 """
-import argparse
-import os
 import sys
+from pathlib import Path
 
+import click
+
+from brokilon.ccd.cli.common_options import common_options
 from brokilon.ccd.domain.transmission import (get_transmission_maps,
                                               get_transmission_ccd_tree_bottom_up)
 from brokilon.ccd.domain.transmission import read_breath_nexus
-from brokilon.ccd.domain.transmission.transmission_ccd import TypeCCD
 
 
-def main():
+@click.command()
+@common_options
+@click.option(
+    "--seed",
+    type=int,
+    default=1337,
+    help="Random number seed for CCD-MAP tree tiebreaking"
+)
+def main(trees_file, ccd_type, burn_in, output_file, verbose, seed):
     """
     Command line interface to calculate a transmission CCD-MAP tree with input options.
     """
-    prelim_parser = argparse.ArgumentParser(add_help=False)
-    prelim_parser.add_argument('--overwrite', action='store_true',)
-    prelim_args, _ = prelim_parser.parse_known_args()
 
-    parser = argparse.ArgumentParser(description='Transmission CCD MAP tree computation',
-                                     prog='transcope')
-    parser.add_argument(
-        '-i', '--input-trees',
-        help='Input tree file path',
-        required=True,
-    )
-    parser.add_argument('-o', '--output-tree',
-                        help='Output Tree file (default: standard output)',
-                        type=argparse.FileType(f"{'w' if prelim_args.overwrite else 'x'}"),
-                        default=sys.stdout,
-                        )
-    parser.add_argument('-b', '--burn-in', nargs='?',
-                        default=0.0,  # default value
-                        const=0.1,  # default value when just --burn-in is passed
-                        type=float,
-                        help='Burn-in proportion between 0.0 and 1.0 (default: %(default)s))'
-                        )
-    parser.add_argument('-t', '--ccd-type',
-                        help=f'What type of transmission CCD (default: %(default)s)',
-                        type=str,
-                        choices=[item.value for item in TypeCCD],
-                        default='Ancestry')
-    parser.add_argument('-v', '--verbose',
-                        action='store_true', help="Enable verbose status output")
-    parser.add_argument('--overwrite', action='store_true',
-                        help='Overwrite existing output file')
-    parser.add_argument("--seed",
-                        help=f"Random seed for CCD-MAP tree tiebreaking (default: %(default)s)",
-                        default=1337,
-                        type=int)
+    trees_file = Path(trees_file).absolute()
 
-    args = parser.parse_args()
-
-    if not os.path.isfile(args.input_trees):
-        print(f"Error: input tree file {args.input_trees} does not exist!", file=sys.stderr)
-        sys.exit(1)
-    if not 0.0 <= args.burn_in < 1.0:
+    if not 0.0 <= burn_in < 1.0:
         print("Burn-in must be between 0.0 (inclusive) and 1.0 (exclusive).", file=sys.stderr)
         sys.exit(1)
 
-    if args.verbose:
+    if verbose:
         print("Parsing input trees...", file=sys.stderr)
 
-    trees = read_breath_nexus(args.input_trees)
-    trees = trees[int(args.burn_in * len(trees)):]
+    trees, taxon_map = read_breath_nexus(trees_file, True)
+    trees = trees[int(burn_in * len(trees)):]
+
     if len(trees) < 1:
         print("Input trees empty after burn-in removal, maybe burn-in too high?", file=sys.stderr)
         sys.exit(1)
-    if args.verbose:
+    if verbose:
         print(f"After burn-in there are {len(trees)} trees left...", file=sys.stderr)
 
-    m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees,
-                                                                       type_str=args.ccd_type)
-    newick_map = get_transmission_ccd_tree_bottom_up(m1, m2,
-                                                     blockcount_map, branch_lengths_map,
-                                                     seed=args.seed)
+    if ccd_type == 1:
+        m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(
+            trees,
+            type_str="Ancestry"
+        )
+    elif ccd_type == 0:
+        raise NotImplementedError("Currently not implemented in this CLI")
 
-    if args.verbose:
+    # todo add similar to geography option to make just a newick string that will be printed
+    newick_map = get_transmission_ccd_tree_bottom_up(
+        m1, m2,
+        blockcount_map, branch_lengths_map,
+        seed=seed
+    )
+
+    if verbose:
         print("Writing transmission CCD-MAP tree to file...", file=sys.stderr)
 
-    with open(args.input_trees, 'r', encoding="UTF-8") as infile:
-        for line in infile:
-            if line.strip().startswith("tree "):
-                break  # Stop reading when the tree section starts
-            args.output_tree.write(line)
+    if output_file:
+        with open(output_file, "x") as output_file_stream:
+            with open(trees_file, 'r', encoding="UTF-8") as infile:
+                for line in infile:
+                    if line.strip().startswith("tree "):
+                        break  # Stop reading when the tree section starts
+                    output_file_stream.write(line)
 
-        args.output_tree.write(f"tree tCCD_MAP = {newick_map};\nEnd;\n")
+                output_file_stream.write(f"tree tCCD_MAP = {newick_map};\nEnd;\n")
+    else:
+        raise NotImplementedError("No outputfile provided, unsupported atm.")
 
-    if args.verbose:
+    if verbose:
         print("Done invoking transcope.", file=sys.stderr)
     return 0
 
 
 if __name__ == '__main__':
-    main()
+    in_trees = (f"{Path(__file__).parent.absolute().parent.parent.parent.parent}/examples/"
+                f"data/breath32sim.trees")
+
+    out_tree = (f"{Path(__file__).parent.absolute().parent.parent.parent.parent}/examples/"
+                f"data/tccd.tree")
+
+    main(
+        [
+            "--trees-file", in_trees,
+            "--output-file", out_tree,
+            "--verbose",
+            "--burn-in", 0.1
+        ]
+    )

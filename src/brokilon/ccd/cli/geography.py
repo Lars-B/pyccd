@@ -1,8 +1,11 @@
-import click
+import sys
 from pathlib import Path
-from brokilon.core.read_nexus import read_nexus_trees
-from brokilon.ccd.domain.phylogeography import get_geo_map, get_geo_map_tree
+
+import click
+
 from brokilon.ccd.cli.common_options import common_options
+from brokilon.ccd.domain.phylogeography import get_geo_map, get_geo_map_tree
+from brokilon.core.read_nexus import read_nexus_trees
 
 
 @click.command()
@@ -12,6 +15,10 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose):
     Process a Nexus tree file and generate a geo-mapped tree.
     """
     trees_file = Path(trees_file).absolute()
+
+    if not 0.0 <= burn_in < 1.0:
+        print("Burn-in must be between 0.0 (inclusive) and 1.0 (exclusive).", file=sys.stderr)
+        sys.exit(1)
 
     if verbose:
         click.echo("Reading Nexus trees...")
@@ -73,7 +80,7 @@ if __name__ == "__main__":
     tree_file = (f"{Path(__file__).parent.absolute().parent.parent.parent.parent}/examples/"
                  f"data/h3n2-bdmm.h3n2_2deme.trees")
     out_file = (f"{Path(__file__).parent.absolute().parent.parent.parent.parent}/examples/"
-                 f"data/ext_ccd_summary.tree")
+                f"data/ext_ccd_summary.tree")
 
     main(
         [
