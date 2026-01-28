@@ -15,6 +15,7 @@ def common_options(func):
         "--ccd-type",
         type=click.Choice(("ccd0", "ccd1", "0", "1"), case_sensitive=False),
         default="ccd1",
+        show_default=True,
         callback=validate_ccd_type,
         help="Type of CCD to use for probability calculation",
     )(func)

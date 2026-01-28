@@ -18,6 +18,7 @@ from brokilon.ccd.domain.transmission import read_breath_nexus
     "--seed",
     type=int,
     default=1337,
+    show_default=True,
     help="Random number seed for CCD-MAP tree tiebreaking"
 )
 def main(trees_file, ccd_type, burn_in, output_file, verbose, seed):
