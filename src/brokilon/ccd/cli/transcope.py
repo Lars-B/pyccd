@@ -8,7 +8,7 @@ import click
 
 from brokilon.ccd.cli.common_options import common_options
 from brokilon.ccd.domain.transmission import (get_transmission_maps,
-                                              get_transmission_ccd_tree_bottom_up)
+                                              get_transmission_map_tree)
 from brokilon.ccd.domain.transmission import read_breath_nexus
 
 
@@ -35,8 +35,8 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose, seed):
     if verbose:
         print("Parsing input trees...", file=sys.stderr)
 
-    trees, taxon_map = read_breath_nexus(trees_file, True)
-    trees = trees[int(burn_in * len(trees)):]
+    trees, taxon_map = read_breath_nexus(trees_file, True, burn_in=burn_in)
+    # trees = trees[int(burn_in * len(trees)):]
 
     if len(trees) < 1:
         print("Input trees empty after burn-in removal, maybe burn-in too high?", file=sys.stderr)
@@ -53,7 +53,7 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose, seed):
         raise NotImplementedError("Currently not implemented in this CLI")
 
     # todo add similar to geography option to make just a newick string that will be printed
-    newick_map = get_transmission_ccd_tree_bottom_up(
+    newick_map = get_transmission_map_tree(
         m1, m2,
         blockcount_map, branch_lengths_map,
         seed=seed

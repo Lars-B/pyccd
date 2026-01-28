@@ -26,11 +26,11 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose):
     # todo optimize the reading of the file, takes a looooot of time atm...
 
     # Read trees and taxon map
-    trees, taxon_map = read_nexus_trees(trees_file, parse_taxon_map=True)
+    trees, taxon_map = read_nexus_trees(trees_file, parse_taxon_map=True, burn_in=burn_in)
 
     # Skip a fraction of trees if needed
-    start_idx = int(len(trees) * burn_in)
-    trees = trees[start_idx:]
+    # start_idx = int(len(trees) * burn_in)
+    # trees = trees[start_idx:]
 
     if verbose:
         click.echo("Computing CCD graph and probabilities...")

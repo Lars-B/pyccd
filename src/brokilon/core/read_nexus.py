@@ -9,7 +9,17 @@ from collections import defaultdict
 from brokilon.core.tree import Tree
 
 
-def read_nexus_trees(file, parse_taxon_map: bool = False) \
+def count_trees_in_nexus(file) -> int:
+    re_tree = re.compile("\t?tree .*=? (.*$)", flags=re.I | re.MULTILINE)
+    n = 0
+    with open(file, 'r', encoding="utf-8") as f:
+        for line in f:
+            if re.match(re_tree, line):
+                n += 1
+    return n
+
+
+def read_nexus_trees(file, parse_taxon_map: bool = False, burn_in: float = 0.0) \
         -> list[Tree] | tuple[list[Tree], dict[str, str]]:
     """
     Function to read a nexus file that contains transmission trees.
@@ -22,8 +32,19 @@ def read_nexus_trees(file, parse_taxon_map: bool = False) \
 
     :param file: Input file
     :param parse_taxon_map: If true returns tuple of trees and taxon map
+    :param burn_in: Fraction of trees at beginning of file to discard
     :returns: list of trees with metadata annotation, optionally also a taxon map as dict
     """
+    # check that burn_in is proper value
+    if not 0.0 <= burn_in < 1.0:
+        raise ValueError("burn_in must be between 0 and 1")
+
+    total_trees = count_trees_in_nexus(file)
+    burn_in_end = int(burn_in * total_trees)
+
+    if total_trees - burn_in_end == 0:
+        raise ValueError(f"No trees left after burn-in, reduce value of burn_in.")
+
     # re_tree returns nwk string without the root height and no ; in the end
     re_tree = re.compile("\t?tree .*=? (.*$)", flags=re.I | re.MULTILINE)
     re_begin_map = re.compile('\t?translate\n', re.I)
@@ -33,6 +54,8 @@ def read_nexus_trees(file, parse_taxon_map: bool = False) \
     begin_taxon_map = False
     taxon_map = {}
     trees = []
+
+    tree_index = 0
 
     with open(file, 'r', encoding="utf-8") as f:
         for line in f:
@@ -47,10 +70,16 @@ def read_nexus_trees(file, parse_taxon_map: bool = False) \
                 if re_begin_map.match(line):
                     begin_taxon_map = True
 
-            if re_tree.match(line):
+            # if re_tree.match(line):
+            m = re_tree.match(line)
+            if m:
+                if tree_index < burn_in_end:
+                    tree_index += 1
+                    continue
                 # tree_string = f'{re.split(re_tree, line)[1][:re.split(re_tree, line)[1]
                 #                                              .rfind(")") + 1]};'
-                tree_string = re.split(re_tree, line)[1]
+                # tree_string = re.split(re_tree, line)[1]
+                tree_string = m.group(1)
                 meta_data_pattern = r"\d*\[[^\]]*\]"  # matches meta data annotations
 
                 counter = 0  # Initialize a counter

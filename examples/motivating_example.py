@@ -67,12 +67,12 @@ def breath_example(basic=False):
     print(len(posterior))
 
     from brokilon.ccd.domain.transmission import get_transmission_maps, \
-        get_transmission_ccd_tree_bottom_up
+        get_transmission_map_tree
 
     m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(
         posterior,
         type_str="Ancestry")
-    newick_map = get_transmission_ccd_tree_bottom_up(
+    newick_map = get_transmission_map_tree(
         m1,
         m2,
         blockcount_map,

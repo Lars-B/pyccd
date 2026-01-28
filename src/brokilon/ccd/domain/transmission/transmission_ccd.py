@@ -191,10 +191,10 @@ def _add_leaf_clade(node, ccd_type: TypeCCD, blockcount_map: dict,
     return blockcount_map, branch_lengths_map, leaf_clade
 
 
-def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
-                                        blockcount_map: dict,
-                                        branch_lengths_map: dict,
-                                        seed: int = 42) -> str:
+def get_transmission_map_tree(m1: dict, m2: dict,
+                              blockcount_map: dict,
+                              branch_lengths_map: dict,
+                              seed: int = 42) -> str:
     """
     Constructs the transmission CCD MAP tree using a bottom-up approach.
 
@@ -306,12 +306,12 @@ def get_transmission_ccd_tree_bottom_up(m1: dict, m2: dict,
     output = _build_tree_dict_from_clade_splits(root_clade,
                                                 seen_resolved_clades)
 
-    return recursive_nwk_split_dict(root_clade, output, blockcount_map,
-                                    branch_lengths_map)
+    return get_tree_from_dict_of_splits(root_clade, output, blockcount_map,
+                                        branch_lengths_map)
 
 
-def recursive_nwk_split_dict(clade, output, blockcount_map,
-                             branch_lengths_map) -> str:
+def get_tree_from_dict_of_splits(clade, output, blockcount_map,
+                                 branch_lengths_map) -> str:
     """
     Recursively generates a Newick string for the given clade.
     Currently, it annotates the median blockcount if a block is present.
@@ -336,8 +336,8 @@ def recursive_nwk_split_dict(clade, output, blockcount_map,
                 f":{np.mean(branch_lengths_map[clade])}")
     return (
         "("
-        f"{recursive_nwk_split_dict(output[clade][0], output, blockcount_map, branch_lengths_map)},"
-        f"{recursive_nwk_split_dict(output[clade][1], output, blockcount_map, branch_lengths_map)})"
+        f"{get_tree_from_dict_of_splits(output[clade][0], output, blockcount_map, branch_lengths_map)},"
+        f"{get_tree_from_dict_of_splits(output[clade][1], output, blockcount_map, branch_lengths_map)})"
         f"[&blockcount={np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
         f"&transmission.ancestor="
         f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
