@@ -1,4 +1,4 @@
-from brokilon.core.read_nexus import read_nexus_trees
+from brokilon.core import read_nexus_trees
 from brokilon.ccd.domain.transmission.label_transmission_history import label_transmission_tree
 
 

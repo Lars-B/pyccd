@@ -1,41 +1,49 @@
 from collections import defaultdict
 
-from brokilon.phylogeography import DemeClade
-from brokilon.transmission_ccd import get_transmission_maps
+from brokilon.ccd.domain.phylogeography import DemeClade
+from brokilon.core import Tree
 
 
-def majority_consensus_annoated(trees):
-    consensus = 0
-
-    # todo figure out if this works...
-    # here we only need a map of clades and how often that specific clade was observed
-    # that should be a separate function as ccd maps should always be probailities? ...
-
+def regular_mrc(trees):
     print(len(trees))
-    m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees,
-                                                                       type_str="Ancestry")
-    major_thr = 0.5
-    clades_majority = [k for k, v in m1.items() if v / len(trees) > major_thr]
-    if len(clades_majority) < len(trees[0]) / 4:
-        print(f"No clades found with threshold: {major_thr}, will divide by 2 and try again")
-        major_thr = major_thr / 2
-        clades_majority = [k for k, v in m1.items() if v / len(trees) > major_thr]
-
-    # todo expand the Maps m1, m2 to include leaf clades etc? or are they just ignored in M1 but
-    #  present, similar to what I did for CCD0 attempt
-    #  in M2?...
-
-    # todo  m1 does not contain leaf clades, but they are now important so we need to keep that in
-    #  mind
-
-    print(len(clades_majority))
-    # print(clades_majority)
-    for c in clades_majority:
-        print(c)
-    return consensus
+    raise NotImplementedError("WIP")
 
 
-def phygeo_mrc(trees, geo_ann_str):
+# def majority_consensus_annoated(trees):
+#
+#     m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(trees,
+#                                                                        type_str="Ancestry")
+#     major_thr = 0.5
+#     clades_majority = [k for k, v in m1.items() if v / len(trees) > major_thr]
+#     if len(clades_majority) < len(trees[0]) / 4:
+#         print(f"No clades found with threshold: {major_thr}, will divide by 2 and try again")
+#         major_thr = major_thr / 2
+#         clades_majority = [k for k, v in m1.items() if v / len(trees) > major_thr]
+#
+#     # todo  m1 does not contain leaf clades, but they are now important so we need to keep that in
+#     #  mind
+#
+#     print(len(clades_majority))
+#     # print(clades_majority)
+#     for c in clades_majority:
+#         print(c)
+#     return consensus
+
+
+def phygeo_mrc(trees, geo_ann_str, major_thr=0.5):
+    """
+    Computes MRC tree for annotated trees (type is input value).
+    Assumes leaves are fixed states.
+
+    :param trees: list of trees
+    :param geo_ann_str: annotation that should be used for clades
+    :return: MRC tree with annotations
+    """
+    if not 0.0 < major_thr < 1.0:
+        raise ValueError(f"Major threshold must be between 0 and 1, but got {major_thr}")
+
+    # todo with very low values this might not be able to construct at tree... catch that.
+
     clade_count_map = defaultdict(int)
     for node in (node for t in trees for node in t.traverse("levelorder")):
         # if geo_ann_str not in node.features:
@@ -52,16 +60,62 @@ def phygeo_mrc(trees, geo_ann_str):
             parent_clade = DemeClade(parent_leaves, deme=getattr(node, geo_ann_str))
             clade_count_map[parent_clade] += 1
 
-    major_thr = 0.5
-    clades_majority = [k for k, v in clade_count_map.items() if v / len(trees) > major_thr]
-    # todo for this we want to include the leaf clades too
+    # clades_majority = [k for k, v in clade_count_map.items() if v / len(trees) > major_thr]
+    clades_majority = []
+    clade_support = {}
+    for k, v in clade_count_map.items():
+        if v / len(trees) > major_thr:
+            clades_majority.append(k)
+            clade_support[k] = v / len(trees)
 
-    # todo build a tree from these clades...
-    # 1. start with largest clade (make sure there is just one but should be fine)
-    # Maybe start from the leafs and then go up, merge all cherries, merge all other things etc...
-    # this isn't as trivial as I thought it would be...
+    working_subtrees = {}
+    for l in trees[0]:
+        t = Tree(support=1.0, dist=1.0, name=l.name)
+        t.add_feature(geo_ann_str, getattr(l, geo_ann_str))
+        working_subtrees[l.name] = t
 
-    return None
+    for i, c in enumerate(sorted(clades_majority, key=len)):
+        new_node = Tree(
+            name=f"clade_{i}",
+            support=clade_support[c],
+            dist=1.0,
+        )
+        new_node.add_feature(geo_ann_str, c.deme)
+
+        for taxon in c.clade:
+            skip = False
+            node = working_subtrees.pop(str(taxon))
+
+            if isinstance(node, str) and node.startswith("clade_"):
+                if node in working_subtrees:
+                    if (
+                            isinstance(working_subtrees[node], str)
+                            and
+                            working_subtrees[node].startswith("clade_")
+                    ):
+                        working_subtrees.pop(node)
+                        skip = True
+                    else:
+                        node = working_subtrees.pop(node)
+                else:
+                    skip = True
+            if not skip:
+                new_node.add_child(node)
+                working_subtrees[node.name] = f"clade_{i}"
+            working_subtrees[str(taxon)] = f"clade_{i}"
+
+        working_subtrees[f"clade_{i}"] = new_node
+
+    try:
+        output = working_subtrees[f"clade_{len(clades_majority) - 1}"]
+    except KeyError:
+        raise ValueError("Something went wrong when constructing the MRC tree.")
+    return output
+
+
+def transmission_mrc(trees):
+    print(len(trees))
+    raise NotImplementedError("WIP")
 
 
 if __name__ == '__main__':
