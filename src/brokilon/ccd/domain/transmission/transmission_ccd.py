@@ -325,6 +325,8 @@ def get_tree_from_dict_of_splits(clade, output, blockcount_map,
     :returns: A string representing the tree in Newick format,
               annotated with meadian blockcount and mean branch lengths.
     """
+    # todo this should be updated to also return a Tree object instead of just a newick string....
+
     if len(clade) == 1:
         # Base case for leaf node
         return (f"{next(iter(clade.clade))}"

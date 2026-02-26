@@ -37,6 +37,7 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose):
 
     # todo this needs to be optimized or somehow made to work, shouldn't take thiiiis long?
     # Compute geo map and branch lengths
+    # todo geo_ann_str should be an input to the function!
     geo_ccd_map, branch_length_map, clade_count_map = get_geo_map(
         trees, geo_ann_str="type", ccd_type=ccd_type
     )
@@ -69,7 +70,7 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose):
                         break
                     output_file_stream.write(line)
 
-                output_file_stream.write(f"tree ext_CCD_MAP = {newick_map}\nEnd;\n")
+            output_file_stream.write(f"tree ext_CCD_MAP = {newick_map}\nEnd;\n")
     else:
         # Print in format 5 with features
         # print(map_tree.write(format=5, features=["type"], format_root_node=True))
