@@ -183,16 +183,17 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
             elif current_range == 0 or current_range == 1:
                 # we are at the start of a range, only have a parent clade at this point...
 
-                # todo this is wrong, need to have ranges in there too, only once though..
                 leaves = get_ranges_clade(node.children[current_range], taxon_map)
-                    # {int(leaf.name) for leaf in node.children[current_range] if
-                    #          leaf.dist != 0.0}
+
+                current_ancestral_range = None
+                if hasattr(node.up, "range"):
+                    current_ancestral_range = reverse_taxon_map[f"{node.up.range}_first"]
 
                 # adding the range using the first occurence of the fossil
                 leaves.add(reverse_taxon_map[f"{node.children[current_range].range}_first"])
                 current_range_start_clade = SRangesClade(
                     frozenset(leaves),
-                    ancestral_range=None
+                    ancestral_range=current_ancestral_range
                 )
                 clade_count_map[current_range_start_clade] += 1
             else:
@@ -211,5 +212,26 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                 frozenset({int(node.name)}), ancestral_range=leaf_ancestor_range
             )] += 1
 
-    # todo do not return default dict, otherwise its easy to add things etc...
-    return clade_count_map, clade_split_count_map
+    # Return a regular dict to avoid adding things later that shouldn't be in there.
+    return dict(clade_count_map), {k: dict(v) for k,v in clade_split_count_map.items()}
+
+
+def get_sranges_map_tree(
+        clade_count_map,
+        clade_split_count_map
+):
+
+    seen_resolved_clades = {}
+    leaf_clades = []
+    for current_clade in sorted(clade_count_map.keys(), key=len):
+        if len(current_clade) == 1:
+            # todo skipping leaf clades, not needed for this?
+            leaf_clades.append(current_clade)
+            continue
+        for current_split in (i for i in clade_split_count_map if i[0] == current_clade):
+            # TODO current bug, cherry clade doesn't have a split in the dict
+            #  also the leafs of the cherry are not all in the clade list?...
+            #  debugging case for cherry taxa 117, 118 outside of a range...
+            print("help me.")
+
+    return None
