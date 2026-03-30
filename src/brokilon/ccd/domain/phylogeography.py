@@ -1,3 +1,4 @@
+import random
 from collections import defaultdict
 from collections import deque
 from statistics import mean
@@ -271,7 +272,33 @@ def get_tree_from_dict_of_splits(
     return output_tree
 
 
+def sample_trees_from_geo_ccd(n_samples, geo_ccd_map, geo_ann_str, clade_count_map):
+    samples = []
+
+    # Precomputation for the root
+    max_key_value = len(max(geo_ccd_map.keys()))
+    all_root_clades = [k for k in geo_ccd_map if len(k) == max_key_value]
+    root_counts = [clade_count_map[r] for r in all_root_clades]
+
+    for _ in range(n_samples):
+        cur_sample_dict = {}
+        working_list = [random.choices(all_root_clades, weights=root_counts, k=1)[0]]
+
+        while working_list:
+            cur_parent = working_list.pop()
+
+            splits, probs = zip(*geo_ccd_map[cur_parent].items())
+            split = random.choices(splits, weights=probs, k=1)[0]
+
+            cur_sample_dict[cur_parent] = split
+            working_list.extend(child for child in split if len(child) > 1)
+        samples.append(get_tree_from_dict_of_splits(cur_sample_dict, geo_ann_str, geo_ccd_map))
+
+    return samples
+
+
 def get_all_trees_represented(geo_ccd_map):
+    # todo not implemented at the moment...
     # todo make a count only function too....?
     working_list_all_trees = {}
 

@@ -18,7 +18,6 @@ def phylgeo_example():
     # counts = {1: 4, 2: 2, 3: 2, 4: 1, 5: 1}
     # posterior = [trees[i] for i in range(len(trees)) for k in range(counts[i+1])]
 
-    # todo think about ccd0 too... is there a difference?
     geo_ccd_map, branch_lengths_map, clade_count_map = (
         get_geo_map(posterior, geo_ann_str="type", ccd_type=1)
     )
@@ -33,7 +32,6 @@ def phylgeo_example():
     print(geo_ccd_map_tree.write(format=5, features=["type"],
                                  format_root_node=True))
 
-    # todo get the regular CCD and map tree too
     # call beast for this to have the summary of states too...
     beast_ccd1_tree = read_nexus_trees(
         os.path.join(
