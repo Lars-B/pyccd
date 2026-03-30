@@ -27,7 +27,7 @@ transcope --help
 A commandline tool to extract date information about who-infected-whom.
 After installation you can get more information by running
 ```bash
-datesWIW --help
+breath-helper --help
 ```
 
 This tool will create a CSV file with the following columns
