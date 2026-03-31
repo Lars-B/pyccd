@@ -1,9 +1,11 @@
 """
 WIP: Module to provide example code for the functions provided in the package.
 """
+import os
 from pathlib import Path
 
 from brokilon.core.read_nexus import read_nexus_trees
+from brokilon.ccd import read_breath_nexus
 
 
 def read_transmission_nexus():
@@ -31,6 +33,34 @@ def label_transmission_tree():
     print(cur_tree_nwk)
 
 
+def sample_from_tccd():
+    trees_path = "data/breath32simShort.trees"
+
+    posterior = read_breath_nexus(
+        os.path.join(
+            Path(__file__).parent.absolute(),
+            trees_path
+        ),
+        parse_taxon_map=False
+    )
+
+    print(len(posterior))
+
+    from brokilon.ccd.domain.transmission import get_transmission_maps
+
+    m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(
+        posterior,
+        type_str="Ancestry")
+
+    from brokilon.ccd.domain.transmission.transmission_ccd import (
+        sample_trees_from_transmission_ccd1
+    )
+
+    sample_trees_from_transmission_ccd1(10, m1, m2)
+    return None
+
+
 if __name__ == '__main__':
-    read_transmission_nexus()
-    label_transmission_tree()
+    # read_transmission_nexus()
+    # label_transmission_tree()
+    sample_from_tccd()

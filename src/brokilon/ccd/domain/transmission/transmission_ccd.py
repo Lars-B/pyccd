@@ -7,7 +7,6 @@ from collections import defaultdict
 from enum import Enum
 
 import numpy as np
-
 from brokilon.ccd.clades import TransmissionAncestryClade, \
     TransmissionBlockClade, BaseClade
 from brokilon.core import Tree
@@ -88,7 +87,7 @@ def get_transmission_maps(trees: list[Tree] | tuple[Tree],
             m1[leaf_clade] += 1
 
     # todo make m1 and m2 not default dicts anymore....
-    return m1, m2, blockcount_map, branch_lengths_map
+    return dict(m1), dict(m2), blockcount_map, branch_lengths_map
 
 
 def _sanitize_transm_ancest(transm_ancest: str) -> str:
@@ -335,7 +334,7 @@ def get_tree_from_dict_of_splits(clade, output, blockcount_map,
                 f"&transmission.ancestor="
                 f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
                 f"]"
-                f":{np.mean(branch_lengths_map[clade])}")
+                f":{np.mean(branch_lengths_map[clade]) if clade in branch_lengths_map else 1.0}")
     return (
         "("
         f"{get_tree_from_dict_of_splits(output[clade][0], output, blockcount_map, branch_lengths_map)},"
@@ -344,7 +343,7 @@ def get_tree_from_dict_of_splits(clade, output, blockcount_map,
         f"&transmission.ancestor="
         f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
         f"]:"
-        f"{np.mean(branch_lengths_map[clade])}"
+        f"{np.mean(branch_lengths_map[clade]) if clade in branch_lengths_map else 1.0}"
     )
 
 
@@ -392,3 +391,65 @@ def _build_tree_dict_from_clade_splits(root_clade: BaseClade,
     if tiebreaking_occurred:
         warnings.warn("Tie breaking affected the constructed MAP tree!")
     return output
+
+
+def transmission_tree_from_dict_of_splits(tree_dict, root_clade):
+    block = "blockcount"
+
+    output_tree = Tree(
+        support=1.0,
+        dist=1.0,
+        name="root"
+    )
+    output_tree.add_feature(block, None)
+
+    # TODO this needs finishing up, hopefully fixes bug with the other method
+    #  the other method currently does not produce the correct thing i believe
+    #  this is because of the mismatch between the clade transmission ancestry annotation
+    #  and the blockcount, we should be able to fix this here
+    #  prducing a correct tree with blockcount annotations that fit the transmission ancestory
+    #  I think it might need either a two pass strat first topology then color in
+    #  or maybe possible on the go, check if ancestry is in either clade, -1 or 0 based on that
+    #  some instances will get >= 0 i.e. block or direct transmission...
+
+    return None
+
+
+def sample_trees_from_transmission_ccd1(n_samples, clade_count_map, clade_split_count_map):
+    samples = []
+
+    max_key_value = len(max(clade_count_map.keys()))
+    all_root_clades = [k for k in clade_count_map if len(k) == max_key_value]
+    root_counts = [clade_count_map[r] for r in all_root_clades]
+
+    for _ in range(n_samples):
+        cur_sample_dict = {}
+        # Keeping the current root clade for recursion tree building
+        cur_root_clade = random.choices(all_root_clades, weights=root_counts, k=1)[0]
+        working_list = [cur_root_clade]
+
+        while working_list:
+            cur_parent = working_list.pop()
+
+            cur_clade_count = clade_count_map[cur_parent]
+            possible_splits = [
+                (k, clade_split_count_map[k] / cur_clade_count)
+                for k in clade_split_count_map if k[0] == cur_parent
+            ]
+
+            chosen_split = random.choices(
+                [split for split, _ in possible_splits],
+                weights=[prob for _, prob in possible_splits],
+                k=1
+            )[0]
+
+            cur_sample_dict[cur_parent] = chosen_split[1:]
+            working_list.extend([child for child in chosen_split[1:] if len(child) > 1])
+
+        # cur_sample_tree = get_tree_from_dict_of_splits(cur_root_clade, cur_sample_dict, {}, {})
+        cur_sample_tree = transmission_tree_from_dict_of_splits(
+            cur_sample_dict, cur_root_clade
+        )
+        samples.append(cur_sample_tree)
+
+    return samples
