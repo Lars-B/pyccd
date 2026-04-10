@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 
 import click
-
 from brokilon.ccd.cli.common_options import common_options
 from brokilon.ccd.domain.transmission import (get_transmission_maps,
                                               get_transmission_map_tree)
@@ -53,11 +52,14 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose, seed):
         raise NotImplementedError("Currently not implemented in this CLI")
 
     # todo add similar to geography option to make just a newick string that will be printed
-    newick_map = get_transmission_map_tree(
+    map_tree = get_transmission_map_tree(
         m1, m2,
-        blockcount_map, branch_lengths_map,
+        blockcount_map,
+        branch_lengths_map,
         seed=seed
     )
+
+    newick_map = map_tree.write(format=5, features=["blockcount"], format_root_node=True)
 
     if verbose:
         print("Writing transmission CCD-MAP tree to file...", file=sys.stderr)

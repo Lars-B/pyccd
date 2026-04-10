@@ -192,7 +192,7 @@ def _add_leaf_clade(node, ccd_type: TypeCCD, blockcount_map: dict,
 def get_transmission_map_tree(m1: dict, m2: dict,
                               blockcount_map: dict,
                               branch_lengths_map: dict,
-                              seed: int = 42) -> str:
+                              seed: int = 42) -> Tree:
     """
     Constructs the transmission CCD MAP tree using a bottom-up approach.
 
@@ -411,7 +411,7 @@ def transmission_tree_from_dict_of_splits(tree_dict, root_clade, blockcount_map,
 
     output_tree = Tree(
         support=1.0,
-        dist=1.0,
+        dist=0.0,
         name="root"
     )
     output_tree.add_feature(block, -1)
