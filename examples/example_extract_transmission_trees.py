@@ -56,8 +56,10 @@ def sample_from_tccd():
         sample_trees_from_transmission_ccd1
     )
 
-    sample_trees_from_transmission_ccd1(10, m1, m2)
-    return None
+    sample = sample_trees_from_transmission_ccd1(10, m1, m2, blockcount_map, branch_lengths_map)
+    # to get a proper newick string...
+    # sample[0].write(format=5, features=["blockcount"], format_root_node=True)
+    return sample
 
 
 if __name__ == '__main__':

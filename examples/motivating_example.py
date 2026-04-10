@@ -70,7 +70,7 @@ def breath_example(basic=False):
     m1, m2, blockcount_map, branch_lengths_map = get_transmission_maps(
         posterior,
         type_str="Ancestry")
-    newick_map = get_transmission_map_tree(
+    map_tree = get_transmission_map_tree(
         m1,
         m2,
         blockcount_map,
@@ -79,7 +79,7 @@ def breath_example(basic=False):
     )
 
     print("Transmission CCD1 map:")
-    print(newick_map)
+    print(map_tree.write(format=5, features=["blockcount"], format_root_node=True))
     print("-------")
 
     beast_ccd_tree_file = (
@@ -104,6 +104,6 @@ def breath_example(basic=False):
 
 
 if __name__ == '__main__':
-    phylgeo_example()
-    # breath_example()
+    # phylgeo_example()
+    breath_example()
     # breath_example(basic=True)

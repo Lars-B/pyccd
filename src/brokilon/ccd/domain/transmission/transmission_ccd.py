@@ -86,8 +86,7 @@ def get_transmission_maps(trees: list[Tree] | tuple[Tree],
             # counting leaf clade occurences too
             m1[leaf_clade] += 1
 
-    # todo make m1 and m2 not default dicts anymore....
-    return dict(m1), dict(m2), blockcount_map, branch_lengths_map
+    return dict(m1), dict(m2), dict(blockcount_map), dict(branch_lengths_map)
 
 
 def _sanitize_transm_ancest(transm_ancest: str) -> str:
@@ -304,47 +303,52 @@ def get_transmission_map_tree(m1: dict, m2: dict,
 
     output = _build_tree_dict_from_clade_splits(root_clade,
                                                 seen_resolved_clades)
+    # Todo: remove old code:
+    # old = get_tree_from_dict_of_splits(root_clade, output, blockcount_map,
+    #                                     branch_lengths_map)
 
-    return get_tree_from_dict_of_splits(root_clade, output, blockcount_map,
-                                        branch_lengths_map)
+    new = transmission_tree_from_dict_of_splits(output, root_clade,
+                                                blockcount_map, branch_lengths_map)
+
+    return new
 
 
-def get_tree_from_dict_of_splits(clade, output, blockcount_map,
-                                 branch_lengths_map) -> str:
-    """
-    Recursively generates a Newick string for the given clade.
-    Currently, it annotates the median blockcount if a block is present.
-    If the given clade is a TransmissionAncestryClade it also annotates that.
-
-    :param clade: The clade to generate the Newick string for.
-    :param output: A dictionary containing the child clades for each parent.
-                   As computed by the _build_tree_dirct_from_clade_splits function.
-    :param blockcount_map: A dictionary mapping clades to their associated blockcount values.
-    :param branch_lengths_map: A dictionary mapping clades to their branch lengths.
-    :returns: A string representing the tree in Newick format,
-              annotated with meadian blockcount and mean branch lengths.
-    """
-    # todo this should be updated to also return a Tree object instead of just a newick string....
-
-    if len(clade) == 1:
-        # Base case for leaf node
-        return (f"{next(iter(clade.clade))}"
-                f"[&blockcount="
-                f"{np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
-                f"&transmission.ancestor="
-                f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
-                f"]"
-                f":{np.mean(branch_lengths_map[clade]) if clade in branch_lengths_map else 1.0}")
-    return (
-        "("
-        f"{get_tree_from_dict_of_splits(output[clade][0], output, blockcount_map, branch_lengths_map)},"
-        f"{get_tree_from_dict_of_splits(output[clade][1], output, blockcount_map, branch_lengths_map)})"
-        f"[&blockcount={np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
-        f"&transmission.ancestor="
-        f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
-        f"]:"
-        f"{np.mean(branch_lengths_map[clade]) if clade in branch_lengths_map else 1.0}"
-    )
+# def get_tree_from_dict_of_splits(clade, output, blockcount_map,
+#                                  branch_lengths_map) -> str:
+#     """
+#     Recursively generates a Newick string for the given clade.
+#     Currently, it annotates the median blockcount if a block is present.
+#     If the given clade is a TransmissionAncestryClade it also annotates that.
+#
+#     :param clade: The clade to generate the Newick string for.
+#     :param output: A dictionary containing the child clades for each parent.
+#                    As computed by the _build_tree_dirct_from_clade_splits function.
+#     :param blockcount_map: A dictionary mapping clades to their associated blockcount values.
+#     :param branch_lengths_map: A dictionary mapping clades to their branch lengths.
+#     :returns: A string representing the tree in Newick format,
+#               annotated with meadian blockcount and mean branch lengths.
+#     """
+#     # todo this should be updated to also return a Tree object instead of just a newick string....
+#
+#     if len(clade) == 1:
+#         # Base case for leaf node
+#         return (f"{next(iter(clade.clade))}"
+#                 f"[&blockcount="
+#                 f"{np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
+#                 f"&transmission.ancestor="
+#                 f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
+#                 f"]"
+#                 f":{np.mean(branch_lengths_map[clade]) if clade in branch_lengths_map else 1.0}")
+#     return (
+#         "("
+#         f"{get_tree_from_dict_of_splits(output[clade][0], output, blockcount_map, branch_lengths_map)},"
+#         f"{get_tree_from_dict_of_splits(output[clade][1], output, blockcount_map, branch_lengths_map)})"
+#         f"[&blockcount={np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
+#         f"&transmission.ancestor="
+#         f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
+#         f"]:"
+#         f"{np.mean(branch_lengths_map[clade]) if clade in branch_lengths_map else 1.0}"
+#     )
 
 
 def _build_tree_dict_from_clade_splits(root_clade: BaseClade,
@@ -370,6 +374,9 @@ def _build_tree_dict_from_clade_splits(root_clade: BaseClade,
                to its child clades (left, right),
                which are also instances of a subclass of `BaseClade`.
      """
+
+
+
     stack = [root_clade]
     output = {}
     tiebreaking_occurred = False
@@ -393,7 +400,13 @@ def _build_tree_dict_from_clade_splits(root_clade: BaseClade,
     return output
 
 
-def transmission_tree_from_dict_of_splits(tree_dict, root_clade):
+def median_sample(values):
+    # Custom median to avoid averaging for even length lists
+    # returns sample in the middle (rounded down)
+    return np.partition(values, len(values) // 2)[len(values) // 2]
+
+
+def transmission_tree_from_dict_of_splits(tree_dict, root_clade, blockcount_map, branch_lengths_map):
     block = "blockcount"
 
     output_tree = Tree(
@@ -401,21 +414,60 @@ def transmission_tree_from_dict_of_splits(tree_dict, root_clade):
         dist=1.0,
         name="root"
     )
-    output_tree.add_feature(block, None)
+    output_tree.add_feature(block, -1)
+    icount = 1
 
-    # TODO this needs finishing up, hopefully fixes bug with the other method
-    #  the other method currently does not produce the correct thing i believe
-    #  this is because of the mismatch between the clade transmission ancestry annotation
-    #  and the blockcount, we should be able to fix this here
-    #  prducing a correct tree with blockcount annotations that fit the transmission ancestory
-    #  I think it might need either a two pass strat first topology then color in
-    #  or maybe possible on the go, check if ancestry is in either clade, -1 or 0 based on that
-    #  some instances will get >= 0 i.e. block or direct transmission...
+    def recursive_children(node, split):
+        c1, c2 = split
 
-    return None
+        def add_clade(node, clade):
+            nonlocal icount, tree_dict, branch_lengths_map, blockcount_map
+            if len(clade) == 1:
+                # leaf node
+                cur_label = next(iter(clade.clade))
+                leaf = node.add_child(
+                    name=cur_label,  # integer label of leaf
+                    dist=np.mean(branch_lengths_map[clade]),
+                    support=1.0  # todo: maybe add ccd support....
+                )
+
+                if clade.transm_ancest == "Unknown":
+                    leaf.add_feature(block, median_sample(blockcount_map[clade]))
+                elif int(clade.transm_ancest) == int(cur_label):
+                    leaf.add_feature(block, -1)
+                else:
+                    leaf.add_feature(block, median_sample(blockcount_map[clade]))
+            else:
+                # internal node
+                internal_node = node.add_child(
+                    name=f"internal_{icount}",
+                    dist=np.mean(branch_lengths_map[clade]),
+                    support=1.0  # todo: maybe add ccd support....
+                )
+                icount += 1
+
+                if clade.transm_ancest == "Unknown":
+                    internal_node.add_feature(block, median_sample(blockcount_map[clade]))
+                elif int(clade.transm_ancest) in clade.clade:
+                    internal_node.add_feature(block, -1)
+                else:
+                    # Only add a block if we have observed it with blocks, otherwise -1
+                    # Could even be more sophisticated and sample either option
+                    # But for that we need more logic and check if we have seen both or not...
+                    if clade in blockcount_map:
+                        internal_node.add_feature(block, median_sample(blockcount_map[clade]))
+                    else:
+                        internal_node.add_feature(block, -1)
+                recursive_children(internal_node, tree_dict[clade])
+
+        add_clade(node, c1)
+        add_clade(node, c2)
+
+    recursive_children(output_tree, tree_dict[root_clade])
+    return output_tree
 
 
-def sample_trees_from_transmission_ccd1(n_samples, clade_count_map, clade_split_count_map):
+def sample_trees_from_transmission_ccd1(n_samples, clade_count_map, clade_split_count_map, blockcount_map, branch_lengths_map):
     samples = []
 
     max_key_value = len(max(clade_count_map.keys()))
@@ -448,8 +500,10 @@ def sample_trees_from_transmission_ccd1(n_samples, clade_count_map, clade_split_
 
         # cur_sample_tree = get_tree_from_dict_of_splits(cur_root_clade, cur_sample_dict, {}, {})
         cur_sample_tree = transmission_tree_from_dict_of_splits(
-            cur_sample_dict, cur_root_clade
+            cur_sample_dict,
+            cur_root_clade,
+            blockcount_map,
+            branch_lengths_map
         )
         samples.append(cur_sample_tree)
-
     return samples
