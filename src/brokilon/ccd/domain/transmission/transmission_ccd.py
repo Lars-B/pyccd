@@ -303,52 +303,9 @@ def get_transmission_map_tree(m1: dict, m2: dict,
 
     output = _build_tree_dict_from_clade_splits(root_clade,
                                                 seen_resolved_clades)
-    # Todo: remove old code:
-    # old = get_tree_from_dict_of_splits(root_clade, output, blockcount_map,
-    #                                     branch_lengths_map)
 
-    new = transmission_tree_from_dict_of_splits(output, root_clade,
-                                                blockcount_map, branch_lengths_map)
-
-    return new
-
-
-# def get_tree_from_dict_of_splits(clade, output, blockcount_map,
-#                                  branch_lengths_map) -> str:
-#     """
-#     Recursively generates a Newick string for the given clade.
-#     Currently, it annotates the median blockcount if a block is present.
-#     If the given clade is a TransmissionAncestryClade it also annotates that.
-#
-#     :param clade: The clade to generate the Newick string for.
-#     :param output: A dictionary containing the child clades for each parent.
-#                    As computed by the _build_tree_dirct_from_clade_splits function.
-#     :param blockcount_map: A dictionary mapping clades to their associated blockcount values.
-#     :param branch_lengths_map: A dictionary mapping clades to their branch lengths.
-#     :returns: A string representing the tree in Newick format,
-#               annotated with meadian blockcount and mean branch lengths.
-#     """
-#     # todo this should be updated to also return a Tree object instead of just a newick string....
-#
-#     if len(clade) == 1:
-#         # Base case for leaf node
-#         return (f"{next(iter(clade.clade))}"
-#                 f"[&blockcount="
-#                 f"{np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
-#                 f"&transmission.ancestor="
-#                 f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
-#                 f"]"
-#                 f":{np.mean(branch_lengths_map[clade]) if clade in branch_lengths_map else 1.0}")
-#     return (
-#         "("
-#         f"{get_tree_from_dict_of_splits(output[clade][0], output, blockcount_map, branch_lengths_map)},"
-#         f"{get_tree_from_dict_of_splits(output[clade][1], output, blockcount_map, branch_lengths_map)})"
-#         f"[&blockcount={np.median(blockcount_map[clade]) if clade in blockcount_map else -1},"
-#         f"&transmission.ancestor="
-#         f"{clade.transm_ancest if isinstance(clade, TransmissionAncestryClade) else 'None'}"
-#         f"]:"
-#         f"{np.mean(branch_lengths_map[clade]) if clade in branch_lengths_map else 1.0}"
-#     )
+    return transmission_tree_from_dict_of_splits(output, root_clade,
+                                                 blockcount_map, branch_lengths_map)
 
 
 def _build_tree_dict_from_clade_splits(root_clade: BaseClade,
@@ -374,8 +331,6 @@ def _build_tree_dict_from_clade_splits(root_clade: BaseClade,
                to its child clades (left, right),
                which are also instances of a subclass of `BaseClade`.
      """
-
-
 
     stack = [root_clade]
     output = {}
@@ -406,7 +361,8 @@ def median_sample(values):
     return np.partition(values, len(values) // 2)[len(values) // 2]
 
 
-def transmission_tree_from_dict_of_splits(tree_dict, root_clade, blockcount_map, branch_lengths_map):
+def transmission_tree_from_dict_of_splits(tree_dict, root_clade, blockcount_map,
+                                          branch_lengths_map):
     block = "blockcount"
 
     output_tree = Tree(
@@ -467,7 +423,8 @@ def transmission_tree_from_dict_of_splits(tree_dict, root_clade, blockcount_map,
     return output_tree
 
 
-def sample_trees_from_transmission_ccd1(n_samples, clade_count_map, clade_split_count_map, blockcount_map, branch_lengths_map):
+def sample_trees_from_transmission_ccd1(n_samples, clade_count_map, clade_split_count_map,
+                                        blockcount_map, branch_lengths_map):
     samples = []
 
     max_key_value = len(max(clade_count_map.keys()))
