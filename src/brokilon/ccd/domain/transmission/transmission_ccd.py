@@ -382,7 +382,7 @@ def transmission_tree_from_dict_of_splits(tree_dict, root_clade, blockcount_map,
                 # leaf node
                 cur_label = next(iter(clade.clade))
                 leaf = node.add_child(
-                    name=cur_label,  # integer label of leaf
+                    name= str(cur_label),  # integer label of leaf
                     dist=np.mean(branch_lengths_map[clade]),
                     support=1.0  # todo: maybe add ccd support....
                 )
@@ -403,7 +403,10 @@ def transmission_tree_from_dict_of_splits(tree_dict, root_clade, blockcount_map,
                 icount += 1
 
                 if clade.transm_ancest == "Unknown":
-                    internal_node.add_feature(block, median_sample(blockcount_map[clade]))
+                    if clade in blockcount_map:
+                        internal_node.add_feature(block, median_sample(blockcount_map[clade]))
+                    else:
+                        internal_node.add_feature(block, -1)
                 elif int(clade.transm_ancest) in clade.clade:
                     internal_node.add_feature(block, -1)
                 else:
