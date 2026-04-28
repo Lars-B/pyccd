@@ -13,27 +13,42 @@ trees, map = read_nexus_trees(test_tree_file, parse_taxon_map=True)
 
 from brokilon.ccd.domain.sranges import sranges
 
-for i in range(len(trees)):
-    clade_counts, clade_split_counts = sranges.get_sranges_map([trees[i]], map)
+clade_counts, clade_split_counts = sranges.get_sranges_map(trees, map)
 
-    taxon_map = map
-    reverse_taxon_map = {value: key for key, value in taxon_map.items()}
+taxon_map = map
 
-    testing = [[k for k in clade_counts if k.clade == c.clade] for c in clade_counts]
+reverse_taxon_map = {value: key for key, value in taxon_map.items()}
 
-    testing_concrete = [l for l in testing if len(l) > 1]
-
-    for l in testing:
-        if len(l) != 1:
-            print("This is a problem we need to fix")
-
-    map_tree = sranges.get_sranges_map_tree(
+map_tree = sranges.get_sranges_map_tree(
         clade_counts,
         clade_split_counts,
         taxon_map,
         reverse_taxon_map
-    )
-    print(f"{i}. Finished...")
+)
+
+print(map_tree)
+
+# for i in range(len(trees)):
+#     clade_counts, clade_split_counts = sranges.get_sranges_map([trees[i]], map)
+#
+#     taxon_map = map
+#     reverse_taxon_map = {value: key for key, value in taxon_map.items()}
+#
+#     testing = [[k for k in clade_counts if k.clade == c.clade] for c in clade_counts]
+#
+#     testing_concrete = [l for l in testing if len(l) > 1]
+#
+#     for l in testing:
+#         if len(l) != 1:
+#             print("This is a problem we need to fix")
+#
+#     map_tree = sranges.get_sranges_map_tree(
+#         clade_counts,
+#         clade_split_counts,
+#         taxon_map,
+#         reverse_taxon_map
+#     )
+#     print(f"{i}. Finished...")
 
 # for c in clade_counts.keys():
 #     print(c)

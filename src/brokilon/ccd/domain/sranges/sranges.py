@@ -453,4 +453,4 @@ def get_sranges_map_tree(
                 seen_resolved_clades[current_clade] = (split_probability, current_split, False)
     # End of seen_resolved_clades construction
 
-    return None
+    return seen_resolved_clades
