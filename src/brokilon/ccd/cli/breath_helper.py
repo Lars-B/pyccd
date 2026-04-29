@@ -4,8 +4,9 @@ from datetime import timedelta
 import click
 import pandas as pd
 import datetime as dt
+from pathlib import Path
 
-from brokilon.core.read_nexus import read_nexus_trees
+from brokilon.ccd.domain.transmission import read_breath_nexus
 from brokilon.ccd.domain.transmission.find_infectors import (find_infector_unknown,
                                                              find_infector_with_data,
                                                              find_infector)
@@ -169,19 +170,23 @@ def extracting_data(tree, taxon_map, sep, fmt):
     help="Date format string to parse dates."
 )
 def main(trees_file, output, burn_in, date_sep, date_format):
-    trees, taxon_map = read_nexus_trees(
-        trees_file,
-        parse_taxon_map=True
-    )
+    trees_file = Path(trees_file).absolute()
 
-    burnin_index = int(burn_in * len(trees))
-    trees = trees[burnin_index:]
+    if not 0.0 <= burn_in < 1.0:
+        print("Burn-in must be between 0.0 (inclusive) and 1.0 (exclusive).", file=sys.stderr)
+        sys.exit(1)
+
+    trees, taxon_map = read_breath_nexus(
+        trees_file,
+        parse_taxon_map=True,
+        burn_in=burn_in
+    )
 
     click.echo(f"Parsed {len(trees)} trees.", err=True)
 
     all_results = []
 
-    with (click.progressbar(enumerate(trees, start=burnin_index),
+    with (click.progressbar(enumerate(trees),
                             length=len(trees),
                             label="Processing trees") as bar):
         for i, tree in bar:
@@ -200,6 +205,6 @@ def main(trees_file, output, burn_in, date_sep, date_format):
 
 if __name__ == '__main__':
     main(
-        args=["--trees-file", "../../tests/data/small_example.trees",
+        args=["--trees-file", "../../../../../../testing/truth.trees",
               "--burn-in", "0"],
     )

@@ -124,9 +124,6 @@ def find_infector_unknown(cur_u_node, root_node):
         else:
             parent_root_dist = cur_u_node.up.up.get_distance(root_node)
 
-        event_start_length_from_parent = cur_u_node.up.dist * cur_u_node.up.blockend
-        infection_start_dist_root = parent_root_dist + event_start_length_from_parent
-
         if cur_u_node.blockcount > 0:
             infection_start_dist_root = parent_root_dist + (cur_u_node.blockstart * cur_u_node.dist)
             block_name = f"block_{cur_u_node.name}"
@@ -170,6 +167,12 @@ def find_infector_unknown(cur_u_node, root_node):
                     cur_u_node.blockcount,
                 ]
         else:
+            if hasattr(cur_u_node.up, "blockend"):
+                event_start_length_from_parent = cur_u_node.up.dist * cur_u_node.up.blockend
+            else:
+                event_start_length_from_parent = cur_u_node.up.dist
+            infection_start_dist_root = parent_root_dist + event_start_length_from_parent
+
             if cur_u_node.up.blockcount > 0:
                 block_name = f"block_{cur_u_node.up.name}"
                 data = [
@@ -185,6 +188,7 @@ def find_infector_unknown(cur_u_node, root_node):
                     infection_start_dist_root,
                     None,
                 ]
+
         result = data if isinstance(data[0], list) else [data]
         if cur_u_node.up.transm_ancest.startswith("Unknown"):
             if not cur_u_node.up.is_root():
