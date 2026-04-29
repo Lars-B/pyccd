@@ -1,5 +1,5 @@
 import sys
-from datetime import timedelta
+import datetime
 
 import click
 import pandas as pd
@@ -11,9 +11,10 @@ from brokilon.ccd.domain.transmission.find_infectors import (find_infector_unkno
                                                              find_infector_with_data,
                                                              find_infector)
 
-global SCALE
-# Days per year, i.e. 1.0 float of branch length equals this value
-SCALE = 365.24219
+
+class DateExtractionError(Exception):
+    """Raised if taxon names do not contain a date"""
+    pass
 
 
 def extract_date_from_label(taxon_label: str,
@@ -39,11 +40,13 @@ def extract_date_from_label(taxon_label: str,
                 return dt.datetime.strptime(parts[1], f).date()
             except Exception:
                 continue
-    raise ValueError(f"Could not extract date from label {taxon_label}.\n"
-                     f"Input for separation was '{sep}' and the date format was '{fmt}'.")
+    raise DateExtractionError(
+        f"Could not extract date from label {taxon_label}.\n"
+        f"Input for separation was '{sep}' and the date format was '{fmt}'."
+    )
 
 
-def get_root_age_from_leafs(tree, taxon_map, sep, fmt):
+def get_root_age_from_leafs(tree, taxon_map, sep, fmt, scale):
     root_node = tree.get_tree_root()
     # scaling floats to dates
     scaling_list = []
@@ -54,7 +57,7 @@ def get_root_age_from_leafs(tree, taxon_map, sep, fmt):
 
     root_dates = []
     for root_dist, date in scaling_list:
-        root_dates.append(date - timedelta(days=root_dist * SCALE))
+        root_dates.append(date - datetime.timedelta(days=root_dist * scale))
 
     unique_dates = sorted(set(root_dates))
     if len(unique_dates) > 1:
@@ -67,9 +70,25 @@ def get_root_age_from_leafs(tree, taxon_map, sep, fmt):
     return unique_dates[0]
 
 
-def float_to_date(root_date, float_val):
-    days_offset = float_val * SCALE
-    return root_date + timedelta(days=days_offset)
+def get_root_age_with_date(tree, start_date, scale):
+    """
+    Using the start date on the oldest taxon we can extract the root age using the scale and float
+    conversion
+
+    :param tree: A tree to get a root date for
+    :param start_date: The date asssumed for the most recent leaf (furthest from root)
+    :param scale: Scale for 1.0 float to days/years
+    :return:
+    """
+    root_node = tree.get_tree_root()
+    furthest_root_distance = max(l.get_distance(root_node) for l in tree)
+    root_date = start_date - datetime.timedelta(days=furthest_root_distance * scale)
+    return root_date
+
+
+def float_to_date(root_date, float_val, scale):
+    days_offset = float_val * scale
+    return root_date + datetime.timedelta(days=days_offset)
 
 
 def translate(value, taxon_map):
@@ -83,7 +102,7 @@ def translate(value, taxon_map):
         return "Unknown_?"
 
 
-def extracting_data(tree, taxon_map, sep, fmt):
+def extracting_data(tree, taxon_map, sep, fmt, scale):
     root_node = tree.get_tree_root()
 
     data_frame = []
@@ -116,12 +135,18 @@ def extracting_data(tree, taxon_map, sep, fmt):
     unique_data = list({tuple(sublist) for sublist in data_frame})
 
     scaled_data_frame = []
-    root_date = get_root_age_from_leafs(tree, taxon_map, sep, fmt)
+
+    try:
+        root_date = get_root_age_from_leafs(tree, taxon_map, sep, fmt, scale)
+    except DateExtractionError:
+        start_leaf_date = datetime.date.today()
+        root_date = get_root_age_with_date(tree, start_leaf_date, scale)
+
     for infector, infectee, start, blockcount in unique_data:
         scaled_data_frame.append([
             translate(infector, taxon_map),
             translate(infectee, taxon_map),
-            float_to_date(root_date, start),
+            float_to_date(root_date, start, scale),
             # todo we can translate blockcount to three types of infection events...
             blockcount if blockcount else "NaN",
         ])
@@ -169,7 +194,15 @@ def extracting_data(tree, taxon_map, sep, fmt):
     show_default=True,
     help="Date format string to parse dates."
 )
-def main(trees_file, output, burn_in, date_sep, date_format):
+@click.option(
+    "--scale",
+    type=float,
+    default=365.24219,
+    show_default=True,
+    help="This is used to convert 1.0 branch length to dates, "
+         "default is that this is equal to one year."
+)
+def main(trees_file, output, burn_in, date_sep, date_format, scale):
     trees_file = Path(trees_file).absolute()
 
     if not 0.0 <= burn_in < 1.0:
@@ -190,7 +223,7 @@ def main(trees_file, output, burn_in, date_sep, date_format):
                             length=len(trees),
                             label="Processing trees") as bar):
         for i, tree in bar:
-            cur_df = extracting_data(tree, taxon_map, date_sep, date_format)
+            cur_df = extracting_data(tree, taxon_map, date_sep, date_format, scale)
             cur_df["tree_index"] = i  # add the tree index as a new column
             all_results.append(cur_df)
 
