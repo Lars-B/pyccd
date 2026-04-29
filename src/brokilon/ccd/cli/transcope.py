@@ -7,8 +7,8 @@ from pathlib import Path
 import click
 from brokilon.ccd.cli.common_options import common_options
 from brokilon.ccd.domain.transmission import (get_transmission_maps,
-                                              get_transmission_map_tree)
-from brokilon.ccd.domain.transmission import read_breath_nexus
+                                              get_transmission_map_tree,
+                                              read_breath_nexus)
 
 
 @click.command()
