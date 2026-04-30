@@ -1,3 +1,4 @@
+import csv
 import sys
 import datetime
 
@@ -70,7 +71,7 @@ def get_root_age_from_leafs(tree, taxon_map, sep, fmt, scale):
     return unique_dates[0]
 
 
-def get_root_age_with_date(tree, start_date, scale):
+def get_root_age_with_date(tree, start_date, scale, taxon_map):
     """
     Using the start date on the oldest taxon we can extract the root age using the scale and float
     conversion
@@ -78,12 +79,23 @@ def get_root_age_with_date(tree, start_date, scale):
     :param tree: A tree to get a root date for
     :param start_date: The date asssumed for the most recent leaf (furthest from root)
     :param scale: Scale for 1.0 float to days/years
+    :param taxon_map: The corresponding taxon map
     :return:
     """
     root_node = tree.get_tree_root()
     furthest_root_distance = max(l.get_distance(root_node) for l in tree)
     root_date = start_date - datetime.timedelta(days=furthest_root_distance * scale)
-    return root_date
+
+    # Writing a dataframe of dates of all leafs...
+    date_list = [
+        (
+            taxon_map[int(l.name)],
+            float_to_date(root_date, l.get_distance(root_node), scale)
+        )
+        for l in tree
+    ]
+
+    return root_date, date_list
 
 
 def float_to_date(root_date, float_val, scale):
@@ -136,11 +148,14 @@ def extracting_data(tree, taxon_map, sep, fmt, scale):
 
     scaled_data_frame = []
 
+    # This is for leaf to date map data if leaf labels don't have dates in them
+    leaf_dates = None
+
     try:
         root_date = get_root_age_from_leafs(tree, taxon_map, sep, fmt, scale)
     except DateExtractionError:
         start_leaf_date = datetime.date.today()
-        root_date = get_root_age_with_date(tree, start_leaf_date, scale)
+        root_date, leaf_dates = get_root_age_with_date(tree, start_leaf_date, scale, taxon_map)
 
     for infector, infectee, start, blockcount in unique_data:
         scaled_data_frame.append([
@@ -155,7 +170,7 @@ def extracting_data(tree, taxon_map, sep, fmt, scale):
     # print(scaled_data_frame)
     df = pd.DataFrame(scaled_data_frame, columns=["Infector", "Infectee", "Infection Start",
                                                   "Blockcount"])
-    return df
+    return df, leaf_dates
 
 
 @click.command()
@@ -218,22 +233,57 @@ def main(trees_file, output, burn_in, date_sep, date_format, scale):
     click.echo(f"Parsed {len(trees)} trees.", err=True)
 
     all_results = []
+    all_leaf_dates = []
 
     with (click.progressbar(enumerate(trees),
                             length=len(trees),
                             label="Processing trees") as bar):
         for i, tree in bar:
-            cur_df = extracting_data(tree, taxon_map, date_sep, date_format, scale)
+            cur_df, leaf_dates = extracting_data(tree, taxon_map, date_sep, date_format, scale)
             cur_df["tree_index"] = i  # add the tree index as a new column
             all_results.append(cur_df)
+            all_leaf_dates.append(leaf_dates)
 
     final_df = pd.concat(all_results, ignore_index=True)
 
+    # Checking leaf dates for consistency among all trees...
+    first_leaf_dates = all_leaf_dates[0]
+    if first_leaf_dates:
+        inconsistent = any(ld != first_leaf_dates for ld in all_leaf_dates[1:])
+        if inconsistent:
+            click.echo("Warning: leaf dates differ across trees!", err=True)
+
+    # Writing output...
     if output:
-        final_df.to_csv(output, index=False)
+        output_path = Path(output).absolute()
+
+        final_df.to_csv(output_path, index=False)
         click.echo(f"Saved results to {output}", err=True)
+
+        if first_leaf_dates:
+            leaf_dates_path = output_path.with_name(output_path.stem + "_leaf_dates.csv")
+
+            with open(leaf_dates_path, "w", newline="\n") as f:
+                writer = csv.writer(f)
+                for i in range(len(all_leaf_dates)):
+                    for taxon, d in all_leaf_dates[i]:
+                        writer.writerow(
+                            (taxon, d.isoformat(), i)
+                        )
+
+            click.echo(f"Saved results to {leaf_dates_path}", err=True)
     else:
+        # No file, writing to stdout
         final_df.to_csv(sys.stdout, index=False)
+
+        if first_leaf_dates:
+            click.echo("----------\nLeaf dates:", err=False)
+            writer = csv.writer(sys.stdout)
+            for i in range(len(all_leaf_dates)):
+                for taxon, d in all_leaf_dates[i]:
+                    writer.writerow(
+                        (taxon, d.isoformat(), i)
+                    )
 
 
 if __name__ == '__main__':
