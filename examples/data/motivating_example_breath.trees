@@ -1,0 +1,24 @@
+#NEXUS
+
+Begin taxa;
+	Dimensions ntax=4;
+		Taxlabels
+			A
+			B
+			C
+			D
+			;
+End;
+Begin trees;
+	Translate
+		   1 A,
+		   2 B,
+		   3 C,
+		   4 D,
+;
+
+tree t1 = (4[&blockcount.t:bla=-1]:1.0,(2[&blockcount.t:bla=0]:1.0,(1[&blockcount.t:bla=-1]:1.0,3[&blockcount.t:bla=1]:1.0)[&blockcount.t:bla=0]:1.0)[&blockcount.t:bla=0]:1.0)[&blockcount.t:bla=-1]:1.0;
+tree t2 = (4[&blockcount.t:bla=-1]:1.0,(1[&blockcount.t:bla=-1]:1.0,(2[&blockcount.t:bla=-1]:1.0,3[&blockcount.t:bla=0]:1.0)[&blockcount.t:bla=0]:1.0)[&blockcount.t:bla=0]:1.0)[&blockcount.t:bla=-1]:1.0;
+tree t3 = (4[&blockcount.t:bla=0]:1.0,(2[&blockcount.t:bla=0]:1.0,(1[&blockcount.t:bla=-1]:1.0,3[&blockcount.t:bla=0]:1.0)[&blockcount.t:bla=0]:1.0)[&blockcount.t:bla=0]:1.0)[&blockcount.t:bla=-1]:1.0;
+tree t4 = ((4[&blockcount.t:bla=-1]:1.0,1[&blockcount.t:bla=0]:1.0)[&blockcount.t:bla=0]:1.0,(2[&blockcount.t:bla=-1]:1.0,3[&blockcount.t:bla=0]:1.0)[&blockcount.t:bla=-1]:1.0)[&blockcount.t:bla=0]:1.0;
+End;
