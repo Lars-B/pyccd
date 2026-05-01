@@ -1,20 +1,13 @@
-.. CCDpy documentation master file, created by
-   sphinx-quickstart on Wed Mar 12 18:13:07 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-CCDpy documentation
-===================
+Brokilon documentation
+======================
 
 This is the documentation for the python implementation of conditional clade distributions (CCDs).
 
+All of these are automatically generated from the code, so if there are missing things or typos they have to be fixed in the corresponding source code file.
+Feel free to raise an issue if you found a problem/typo or just want something documented that is currently not there.
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: API Reference
 
-   readTrees
-   labelTransmissionTrees
-   transmissionCCD
-   transcope
-
+   auto_gen_docs/brokilon
