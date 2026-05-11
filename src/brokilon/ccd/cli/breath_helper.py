@@ -224,6 +224,16 @@ def main(trees_file, output, burn_in, date_sep, date_format, scale):
         print("Burn-in must be between 0.0 (inclusive) and 1.0 (exclusive).", file=sys.stderr)
         sys.exit(1)
 
+    from brokilon.core.read_nexus import count_trees_in_nexus
+
+    total_trees = count_trees_in_nexus(trees_file)
+    burn_in_end = int(burn_in * total_trees)
+    if total_trees - burn_in_end == 0:
+        raise ValueError(f"No trees left after burn-in, reduce value of burn_in.")
+
+    click.echo(f"File contains {total_trees} trees. "
+               f"Removing up to tree {burn_in_end} as burnin.", err=True)
+
     trees, taxon_map = read_breath_nexus(
         trees_file,
         parse_taxon_map=True,
@@ -240,7 +250,7 @@ def main(trees_file, output, burn_in, date_sep, date_format, scale):
                             label="Processing trees") as bar):
         for i, tree in bar:
             cur_df, leaf_dates = extracting_data(tree, taxon_map, date_sep, date_format, scale)
-            cur_df["tree_index"] = i  # add the tree index as a new column
+            cur_df["tree_index"] = i + burn_in_end + 1  # Correct for burn-in and make index 1 based
             all_results.append(cur_df)
             all_leaf_dates.append(leaf_dates)
 
