@@ -1,12 +1,10 @@
 import csv
-import sys
 import datetime
-
-import click
-import pandas as pd
 import datetime as dt
 from pathlib import Path
 
+import click
+import pandas as pd
 from brokilon.ccd.domain.transmission import read_breath_nexus
 from brokilon.ccd.domain.transmission.find_infectors import (find_infector_unknown,
                                                              find_infector_with_data,
@@ -173,66 +171,34 @@ def extracting_data(tree, taxon_map, sep, fmt, scale):
     return df, leaf_dates
 
 
-@click.command()
-@click.option(
-    "--trees-file",
-    required=True,
-    type=click.Path(exists=True, dir_okay=False),
-    help="Path to the file containing the trees."
-)
-@click.option(
-    "--output",
-    type=click.Path(writable=True, dir_okay=False),
-    default=None,
-    help="Path to save the CSV. Defaults to stdout."
-)
-@click.option(
-    "--burn-in",
-    type=float,
-    default=0.1,       # default if option is NOT passed
-    required=False,
-    is_eager=True,
-    show_default=True,
-    help="Burn-in proportion between 0.0 and 1.0."
-)
-@click.option(
-    "--date-sep",
-    type=str,
-    default="+",
-    show_default=True,
-    help="Separator used in taxon labels to split ID and date."
-)
-@click.option(
-    "--date-format",
-    type=str,
-    default="%Y-%m-%d",
-    show_default=True,
-    help="Date format string to parse dates."
-)
-@click.option(
-    "--scale",
-    type=float,
-    default=365.24219,
-    show_default=True,
-    help="This is used to convert 1.0 branch length to dates, "
-         "default is that this is equal to one year."
-)
-def main(trees_file, output, burn_in, date_sep, date_format, scale):
+def process_trees_file(
+        trees_file,
+        output=None,
+        burn_in=0.1,
+        date_sep="+",
+        date_format="%Y-%m-%d",
+        scale=365.24219,
+        progress_callback=None,
+        log_callback=None,
+):
     trees_file = Path(trees_file).absolute()
 
     if not 0.0 <= burn_in < 1.0:
-        print("Burn-in must be between 0.0 (inclusive) and 1.0 (exclusive).", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError("Burn-in must be between 0.0 (inclusive) and 1.0 (exclusive).")
 
     from brokilon.core.read_nexus import count_trees_in_nexus
 
     total_trees = count_trees_in_nexus(trees_file)
     burn_in_end = int(burn_in * total_trees)
-    if total_trees - burn_in_end == 0:
-        raise ValueError(f"No trees left after burn-in, reduce value of burn_in.")
 
-    click.echo(f"File contains {total_trees} trees. "
-               f"Removing up to tree {burn_in_end} as burnin.", err=True)
+    if total_trees - burn_in_end == 0:
+        raise ValueError("No trees left after burn-in, reduce value of burn_in.")
+
+    if log_callback:
+        log_callback(
+            f"File contains {total_trees} trees. "
+            f"Removing up to tree {burn_in_end} as burnin."
+        )
 
     trees, taxon_map = read_breath_nexus(
         trees_file,
@@ -240,64 +206,83 @@ def main(trees_file, output, burn_in, date_sep, date_format, scale):
         burn_in=burn_in
     )
 
-    click.echo(f"Parsed {len(trees)} trees.", err=True)
+    if log_callback:
+        log_callback(f"Parsed {len(trees)} trees.")
 
     all_results = []
     all_leaf_dates = []
 
-    with (click.progressbar(enumerate(trees),
-                            length=len(trees),
-                            label="Processing trees") as bar):
-        for i, tree in bar:
-            cur_df, leaf_dates = extracting_data(tree, taxon_map, date_sep, date_format, scale)
-            cur_df["tree_index"] = i + burn_in_end + 1  # Correct for burn-in and make index 1 based
-            all_results.append(cur_df)
-            all_leaf_dates.append(leaf_dates)
+    for i, tree in enumerate(trees):
+        if progress_callback:
+            progress_callback(i, len(trees))
+
+        cur_df, leaf_dates = extracting_data(
+            tree, taxon_map, date_sep, date_format, scale
+        )
+
+        cur_df["tree_index"] = i + burn_in_end + 1
+        all_results.append(cur_df)
+        all_leaf_dates.append(leaf_dates)
 
     final_df = pd.concat(all_results, ignore_index=True)
 
-    # Checking leaf dates for consistency among all trees...
-    first_leaf_dates = all_leaf_dates[0]
+    first_leaf_dates = all_leaf_dates[0] if all_leaf_dates else None
+
     if first_leaf_dates:
         inconsistent = any(ld != first_leaf_dates for ld in all_leaf_dates[1:])
-        if inconsistent:
-            click.echo("Warning: leaf dates differ across trees!", err=True)
+        if inconsistent and log_callback:
+            log_callback("Warning: leaf dates differ across trees!")
 
-    # Writing output...
+    # OUTPUT HANDLING (kept simple for GUI reuse)
     if output:
         output_path = Path(output).absolute()
-
         final_df.to_csv(output_path, index=False)
-        click.echo(f"Saved results to {output}", err=True)
+
+        leaf_dates_path = output_path.with_name(output_path.stem + "_leaf_dates.csv")
 
         if first_leaf_dates:
-            leaf_dates_path = output_path.with_name(output_path.stem + "_leaf_dates.csv")
-
             with open(leaf_dates_path, "w", newline="\n") as f:
                 writer = csv.writer(f)
-                for i in range(len(all_leaf_dates)):
-                    for taxon, d in all_leaf_dates[i]:
-                        writer.writerow(
-                            (taxon, d.isoformat(), i)
-                        )
+                for i, leafs in enumerate(all_leaf_dates):
+                    for taxon, d in leafs:
+                        writer.writerow((taxon, d.isoformat(), i))
 
-            click.echo(f"Saved results to {leaf_dates_path}", err=True)
-    else:
-        # No file, writing to stdout
-        final_df.to_csv(sys.stdout, index=False)
+        return final_df, str(output_path), str(leaf_dates_path)
 
-        if first_leaf_dates:
-            click.echo("----------\nLeaf dates:", err=False)
-            writer = csv.writer(sys.stdout)
-            for i in range(len(all_leaf_dates)):
-                for taxon, d in all_leaf_dates[i]:
-                    writer.writerow(
-                        (taxon, d.isoformat(), i)
-                    )
+    return final_df, None, None
+
+
+@click.command()
+@click.option("--trees-file", required=True, type=click.Path(exists=True, dir_okay=False))
+@click.option("--output", type=click.Path(writable=True, dir_okay=False), default=None)
+@click.option("--burn-in", type=float, default=0.1, show_default=True)
+@click.option("--date-sep", type=str, default="+", show_default=True)
+@click.option("--date-format", type=str, default="%Y-%m-%d", show_default=True)
+@click.option("--scale", type=float, default=365.24219, show_default=True)
+def main(trees_file, output, burn_in, date_sep, date_format, scale):
+    def log(msg):
+        click.echo(msg, err=True)
+
+    def progress(i, total):
+        # CLI-friendly minimal progress
+        if i % 10 == 0:
+            click.echo(f"Processing {i}/{total}", err=True)
+
+    process_trees_file(
+        trees_file=trees_file,
+        output=output,
+        burn_in=burn_in,
+        date_sep=date_sep,
+        date_format=date_format,
+        scale=scale,
+        log_callback=log,
+        progress_callback=progress,
+    )
 
 
 if __name__ == '__main__':
     main(
         args=["--trees-file", "../../../../../../testing/truth.trees",
-              "--burn-in", "0"],
+              "--burn-in", "0",
+              "--output", "../../../../../../testing/refactor_out.log"],
     )
