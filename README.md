@@ -44,10 +44,6 @@ This is available for different verions of extended trees, see help.
 
 ## Breath helper infection date extraction
 
-> [!Note]
-> A detailed example for this tool can be found
-> [here](https://gist.github.com/Lars-B/0909ffde2938c6782273719fabf1bb06)
-
 A commandline tool to extract date information about who-infected-whom.
 After installation, you can get more information by running
 
@@ -55,29 +51,7 @@ After installation, you can get more information by running
 breath-helper --help
 ```
 
-This tool will create a CSV file with the following columns
-```csv
-Infector, Infectee, Start Date of infection, blockcount, Tree index
-```
-
-To convert the tree distances to dates we need the taxon labels to have date information.
-The default assumption is that the tip labels are foramted like this:
-```
-ID+YYYY-MM-DD
-2+2007-11-01
-```
-> [!Caution]
-> Use the flags `--date-sep` and `--date-format` to specify your layout
-> Be aware that using a separator that is also present in the date format will not work!
-
-If this is not the case the tool will automatically create tip dates.
-This is done by calibrating the leaf that is furthest from the root to be the current date.
-If this is required, the tool will also produce a `csv` dataframe that contains 
-the dates for all taxon labels and all trees in the input.
-
-> [!Important]
-> It is also currently assumed that the float scale is in years, i.e. 1.0 branch length equals 1
-> year
+There is a GUI wrapper with more details on this tool available at [Lars-B/brokilon_transmission_app](https://github.com/Lars-B/brokilon_transmission_app).
 
 # Installation
 
