@@ -65,7 +65,7 @@ def prelabel_tree(tree, taxon_map):
                 if not hasattr(leaf.up, "rangetype"):
                     leaf.up.add_feature("rangetype", "range_end")
                 else:
-                    assert leaf.up.rangetype == "range_start", "failue"
+                    assert leaf.up.rangetype == "range_start", "failure"
                     leaf.up.rangetype = "leaf_range"
                 leaf.add_feature("rangetype", "range_end")
 
@@ -77,7 +77,7 @@ def prelabel_tree(tree, taxon_map):
         current_taxon = taxon_map[int(leaf.name)]
         if current_taxon.endswith("_last"):
             # Closing ranges with leafs that don't have dist 0
-            if f"{current_taxon[:-5]}_first" in opened_ranges:
+            if current_taxon.replace("_last", "_first") in opened_ranges:
                 if not hasattr(leaf.up, "rangetype"):
                     if leaf.dist == 0.0:
                         leaf.up.add_feature("rangetype", "range_end")
@@ -134,6 +134,8 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                     # regular leaf
                     assert taxon_map[int(node.name)].endswith("_first"), "Failed leaf case..."
                     cur_range = None
+                    # todo double check this with the following cases, is there some redundancy
+                    #  comparing to the match case below?
                     if hasattr(node.up, "range"):
                         cur_range = f"{node.up.range}_first"
                     elif hasattr(node.up, "rangetype"):
@@ -210,15 +212,21 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
 
                         if node.up:
                             if hasattr(node.up, "rangetype"):
-                                if node.up.rangetype == "range_end":
-                                    current_range = f"{node.up.range}_first"
-                                elif node.up.rangetype == "sampled_ancestor":
-                                    assert hasattr(node.up, "sampledancestor"), "This needs fixing"
-                                    current_range = f"{node.up.sampledancestor}_first"
-                                elif node.up.rangetype == "range_start":
-                                    assert node.up.range == node.range, "something wrong with node.up.up case"
-                                    if hasattr(node.up.up, "range"):
-                                        current_range = f"{node.up.up.range}_first"
+                                match node.up.rangetype:
+                                    case "range_end":
+                                        current_range = f"{node.up.range}_first"
+                                    case "sampled_ancestor":
+                                        assert hasattr(node.up, "sampledancestor"),\
+                                            "This needs fixing"
+                                        current_range = f"{node.up.sampledancestor}_first"
+                                    case "range_start":
+                                        assert node.up.range == node.range, \
+                                            "something wrong with node.up.up case"
+                                        # todo check this case again...
+                                        if hasattr(node.up.up, "range"):
+                                            current_range = f"{node.up.up.range}_first"
+                                    case _:
+                                        pass
                             elif hasattr(node.up, "range"):
                                 current_range = f"{node.up.range}_first"
 
@@ -278,17 +286,23 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                         parent_range = None
                         if node.up:
                             if hasattr(node.up, "rangetype"):
-                                if node.up.rangetype == "range_end":
-                                    parent_range = f"{node.up.range}_first"
-                                elif node.up.rangetype == "sampled_ancestor":
-                                    assert hasattr(node.up, "sampledancestor"), "This needs fixing"
-                                    parent_range = f"{node.up.sampledancestor}_first"
-                                elif node.up.rangetype == "range_start":
-                                    assert node.up.range == node.range, "something wrong with node.up.up case"
-                                    if hasattr(node.up.up, "range"):
-                                        parent_range = f"{node.up.up.range}_first"
-                                    elif hasattr(node.up.up, "sampledancestor"):
-                                        parent_range = f"{node.up.up.sampledancestor}_first"
+                                match node.up.rangetype:
+                                    # todo this case with the the case elif below? redundancy?
+                                    case "range_end":
+                                        parent_range = f"{node.up.range}_first"
+                                    case "sampled_ancestor":
+                                        assert hasattr(node.up, "sampledancestor"), \
+                                            "This needs fixing"
+                                        parent_range = f"{node.up.sampledancestor}_first"
+                                    case "range_start":
+                                        assert node.up.range == node.range, \
+                                            "something wrong with node.up.up case"
+                                        if hasattr(node.up.up, "range"):
+                                            parent_range = f"{node.up.up.range}_first"
+                                        elif hasattr(node.up.up, "sampledancestor"):
+                                            parent_range = f"{node.up.up.sampledancestor}_first"
+                                    case _:
+                                        pass
                             elif hasattr(node.up, "range"):
                                 parent_range = f"{node.up.range}_first"
 
@@ -303,11 +317,13 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                         # We don't need to add a split here?
                         # We only count the clade, which is the taxon and itself as a range?
 
-                        # This can surely be done in a nicer way...
+                        # todo fix this to something less messy...
                         current_leaf = [l.name for l in node if l.dist == 0.0][0]
                         range_taxon = reverse_taxon_map[f"{node.range}_first"]
-                        assert range_taxon == int(current_leaf), (f"Failure: "
-                                                                  f"{range_taxon} != {current_leaf}")
+
+                        # todo what is this assert doing?
+                        assert range_taxon == int(current_leaf), \
+                            (f"Failure: {range_taxon} != {current_leaf}")
 
                         # Leaf ranges can not have themselves as a range,
                         # but there can be other ranges as ancestors above
@@ -350,17 +366,20 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                     cur_range = f"{node.range}_first"
                 if node.up:
                     if hasattr(node.up, "rangetype"):
-                        if node.up.rangetype == "range_end":
-                            parent_range = f"{node.up.range}_first"
-                        elif node.up.rangetype == "sampled_ancestor":
-                            assert hasattr(node.up, "sampledancestor"), "This needs fixing"
-                            parent_range = f"{node.up.sampledancestor}_first"
-                        elif node.up.rangetype == "range_start":
-                            assert node.up.range == node.range, "something wrong with node.up.up case"
-                            if hasattr(node.up.up, "range"):
-                                parent_range = f"{node.up.up.range}_first"
-                            elif hasattr(node.up.up, "sampledancestor"):
-                                parent_range = f"{node.up.up.sampledancestor}_first"
+                        match node.up.rangetype:
+                            case "range_end":
+                                parent_range = f"{node.up.range}_first"
+                            case "sampled_ancestor":
+                                assert hasattr(node.up, "sampledancestor"), "This needs fixing"
+                                parent_range = f"{node.up.sampledancestor}_first"
+                            case "range_start":
+                                assert node.up.range == node.range, "something wrong with node.up.up case"
+                                if hasattr(node.up.up, "range"):
+                                    parent_range = f"{node.up.up.range}_first"
+                                elif hasattr(node.up.up, "sampledancestor"):
+                                    parent_range = f"{node.up.up.sampledancestor}_first"
+                            case _:
+                                pass
                     elif hasattr(node.up, "range"):
                         parent_range = f"{node.up.range}_first"
 
