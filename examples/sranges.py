@@ -3,9 +3,11 @@ from pathlib import Path
 
 test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
                   f"/examples/data/sr_example.trees")
+# test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
+#                   f"/examples/data/rep_3_srfbd_first_ucln.trees")
 
-test_mcc_tree_file = (f"{Path(__file__).parent.absolute().parent}"
-                  f"/examples/data/sr_mcc.tree")
+# test_mcc_tree_file = (f"{Path(__file__).parent.absolute().parent}"
+#                   f"/examples/data/sr_mcc.tree")
 
 from brokilon.core import read_nexus_trees
 
@@ -26,7 +28,13 @@ map_tree = sranges.get_sranges_map_tree(
         reverse_taxon_map
 )
 
-print(map_tree)
+nwk_map = map_tree.write(
+    format=5,
+    format_root_node=True,
+    features=["orientation"]
+)
+
+print(nwk_map)
 
 # for i in range(len(trees)):
 #     clade_counts, clade_split_counts = sranges.get_sranges_map([trees[i]], map)

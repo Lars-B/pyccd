@@ -1,7 +1,7 @@
 from collections import defaultdict
-from collections import namedtuple
 
 from brokilon.ccd.clades.sranges import SRangesClade
+from brokilon.core import Tree
 
 import inspect
 from dataclasses import dataclass, field
@@ -472,4 +472,87 @@ def get_sranges_map_tree(
                 seen_resolved_clades[current_clade] = (split_probability, current_split, False)
     # End of seen_resolved_clades construction
 
-    return seen_resolved_clades
+    # todo we should use the named tuple to store prob and splits etc...
+
+    output = {}
+    max_key_value = len(max(seen_resolved_clades.keys()))
+    all_root_clades = [k for k in seen_resolved_clades if len(k) == max_key_value]
+    max_root_prob = max(seen_resolved_clades[root][0] for root in all_root_clades)
+    best_roots = [root for root in all_root_clades
+                  if seen_resolved_clades[root][0] == max_root_prob]
+
+    if len(best_roots) > 1:
+        raise NotImplementedError("Currently no tie breaking support for multiple roots")
+    else:
+        root = best_roots[0]
+
+    map_tree = get_sranges_tree_from_seen_resolved_clades(seen_resolved_clades, root)
+
+    return map_tree
+
+
+def get_sranges_tree_from_seen_resolved_clades(
+        seen_resolved_clades,
+        root_clade
+):
+    # todo ignoring tie breaking for now...
+    # todo ignoring ranges at the moment...
+
+    out_tree = Tree(
+        support=100,
+        dist=1.0,
+        name="root"
+    )
+
+    icount = 1
+
+    def recursive_sranges_children(node, split):
+        nonlocal icount, seen_resolved_clades
+
+        cur_anc = split.ancestor
+        cur_descendant = split.descendant
+
+        def add_clade(parent_node, clade, orientation):
+            nonlocal icount, seen_resolved_clades
+
+            # leaf
+            if len(clade.clade) == 1:
+                label = next(iter(clade.clade))
+
+                leaf = parent_node.add_child(
+                    name=label,
+                    dist= 10,
+                    # mean(branch_length_map.get(clade, [1])),
+                    support=1.0,
+                )
+                # add feature ancestor or descendant
+                leaf.add_feature("orientation", orientation)
+
+            # internal node
+            else:
+                internal_node = parent_node.add_child(
+                    name=f"internal_{icount}",
+                    dist=10,
+                    # mean(branch_length_map.get(clade, [1])),
+                    support=10
+                    # split_support_map.get(split, 1.0),
+                )
+
+                internal_node.add_feature("orientation", orientation)
+
+                icount += 1
+
+                # recurse if this clade was resolved
+                if clade in seen_resolved_clades:
+                    child_split = seen_resolved_clades[clade][1]
+                    recursive_sranges_children(internal_node, child_split)
+
+        add_clade(node, cur_anc, "ancestor")
+        add_clade(node, cur_descendant, "descendant")
+
+    recursive_sranges_children(
+        out_tree,
+        seen_resolved_clades[root_clade][1]
+    )
+
+    return out_tree
