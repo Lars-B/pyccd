@@ -13,6 +13,8 @@ from brokilon.core import read_nexus_trees
 
 trees, map = read_nexus_trees(test_tree_file, parse_taxon_map=True)
 
+trees = trees[:10]
+
 from brokilon.ccd.domain.sranges import sranges
 
 clade_counts, clade_split_counts = sranges.get_sranges_map(trees, map)
@@ -31,7 +33,7 @@ map_tree = sranges.get_sranges_map_tree(
 nwk_map = map_tree.write(
     format=5,
     format_root_node=True,
-    features=["orientation"]
+    features=["orientation", "ancestral_range"]
 )
 
 print(nwk_map)

@@ -521,13 +521,13 @@ def get_sranges_tree_from_seen_resolved_clades(
 
                 leaf = parent_node.add_child(
                     name=label,
-                    dist= 10,
+                    dist=10,
                     # mean(branch_length_map.get(clade, [1])),
                     support=1.0,
                 )
                 # add feature ancestor or descendant
                 leaf.add_feature("orientation", orientation)
-
+                leaf.add_feature('ancestral_range', clade.ancestral_range)
             # internal node
             else:
                 internal_node = parent_node.add_child(
@@ -539,6 +539,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                 )
 
                 internal_node.add_feature("orientation", orientation)
+                internal_node.add_feature("ancestral_range", clade.ancestral_range)
 
                 icount += 1
 
