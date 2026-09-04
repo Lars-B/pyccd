@@ -167,7 +167,7 @@ def read_nexus_trees(file, parse_taxon_map: bool = False, burn_in: float = 0.0) 
                 )
                 tree = Tree(sanitized_tree_newick, format=1)
 
-                # Annotating meta data to nodes
+                # Annotating metadata to nodes
                 _meta_label_nodes(tree, node_meta_data)
 
                 trees.append(tree)
@@ -179,7 +179,9 @@ def read_nexus_trees(file, parse_taxon_map: bool = False, burn_in: float = 0.0) 
 
 def _cast_to_int(value):
     """
-    Custom function to cast a value to an integer. Fallbacks are either float or the original value.
+    Custom function to cast a value to an integer. Fallbacks closest rounded int
+    or the original value.
+
     :param value: Input value to cast
     :return: Integer value or float or original value
     """
@@ -187,7 +189,7 @@ def _cast_to_int(value):
         f = float(value)
         if f.is_integer():
             return int(f)
-        return f
+        return int(round(f))
     except ValueError:
         return value
 
