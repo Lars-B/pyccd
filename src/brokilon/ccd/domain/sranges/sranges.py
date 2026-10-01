@@ -34,7 +34,8 @@ def prelabel_tree(tree, taxon_map):
         if leaf.dist == 0.0:
             # non regular leaf
             if current_taxon.endswith("_first"):
-                other_leaves = [taxon_map[int(t.name)] for t in leaf.up if t is not leaf]
+                other_leaves = [taxon_map[int(t.name)] for t in leaf.up if
+                                t is not leaf]
 
                 range_end = current_taxon.replace("_first", "_last")
 
@@ -56,7 +57,8 @@ def prelabel_tree(tree, taxon_map):
 
                     assert not hasattr(leaf.up, "range"), "This should be SA!"
                     # Adding the SA as an attribute to the parent for further use
-                    leaf.up.add_feature("sampledancestor", taxon_map[int(leaf.name)][:-6])
+                    leaf.up.add_feature("sampledancestor",
+                                        taxon_map[int(leaf.name)][:-6])
 
                     sampled_ancestors.add(current_taxon)
             elif current_taxon.endswith("_last"):
@@ -95,7 +97,8 @@ def prelabel_tree(tree, taxon_map):
                 continue
     if len(opened_ranges) != len(closed_ranges):
         raise ValueError("This is not possible and a bug is found.")
-    print(f"Tree has {len(sampled_ancestors)} SAs and {len(opened_ranges)} ranges.")
+    print(
+        f"Tree has {len(sampled_ancestors)} SAs and {len(opened_ranges)} ranges.")
 
 
 def get_sranges_map(trees, taxon_map, ccd_type=1):
@@ -117,10 +120,13 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                     if node.rangetype == "range_end":
                         if hasattr(node.up, "rangetype"):
                             if node.up.rangetype == "leaf_range":
+                                # todo might have to add these clades too?
+                                #  this would be to identify leaf ranges
                                 continue
                         assert node.dist != 0.0, "If this happens we need to not allow it?!"
                         assert node.up.range == node.range, "The ranges don't match?"
-                        assert (taxon_map[int(node.name)].replace("_last", "_first") ==
+                        assert (taxon_map[int(node.name)].replace("_last",
+                                                                  "_first") ==
                                 f"{node.range}_first"), \
                             "More problems"
                         clade_count_map[SRangesClade(
@@ -132,7 +138,8 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                         continue
                 else:
                     # regular leaf
-                    assert taxon_map[int(node.name)].endswith("_first"), "Failed leaf case..."
+                    assert taxon_map[int(node.name)].endswith(
+                        "_first"), "Failed leaf case..."
                     cur_range = None
                     # todo double check this with the following cases, is there some redundancy
                     #  comparing to the match case below?
@@ -163,15 +170,22 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                             current_range = f"{node.up.range}_first"
                         elif hasattr(node.up, "sampledancestor"):
                             current_range = f"{node.up.sampledancestor}_first"
-                        parent_clade_set = {taxon_map[int(l.name)].replace("_last", "_first") for l
-                                            in node}
+                        parent_clade_set = {
+                            taxon_map[int(l.name)].replace("_last", "_first")
+                            for l
+                            in node}
 
-                        child0_clade_set = {taxon_map[int(l.name)].replace("_last", "_first") for l
-                                            in node.children[0]}
-                        child1_clade_set = {taxon_map[int(l.name)].replace("_last", "_first") for l
-                                            in node.children[1]}
+                        child0_clade_set = {
+                            taxon_map[int(l.name)].replace("_last", "_first")
+                            for l
+                            in node.children[0]}
+                        child1_clade_set = {
+                            taxon_map[int(l.name)].replace("_last", "_first")
+                            for l
+                            in node.children[1]}
 
-                        assert parent_clade_set == child0_clade_set.union(child1_clade_set)
+                        assert parent_clade_set == child0_clade_set.union(
+                            child1_clade_set)
 
                         current_parent_clade = SRangesClade(
                             frozenset(parent_clade_set),
@@ -202,7 +216,8 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                             )
 
                         clade_count_map[current_parent_clade] += 1
-                        clade_split_count_map[current_parent_clade][current_split] += 1
+                        clade_split_count_map[current_parent_clade][
+                            current_split] += 1
                     case "range_start":
                         current_range = None
                         # if hasattr(node.up, "range"):
@@ -216,7 +231,8 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                                     case "range_end":
                                         current_range = f"{node.up.range}_first"
                                     case "sampled_ancestor":
-                                        assert hasattr(node.up, "sampledancestor"),\
+                                        assert hasattr(node.up,
+                                                       "sampledancestor"), \
                                             "This needs fixing"
                                         current_range = f"{node.up.sampledancestor}_first"
                                     case "range_start":
@@ -232,22 +248,30 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
 
                         parent_clade = SRangesClade(
                             frozenset(
-                                {taxon_map[int(l.name)].replace("_last", "_first") for l in node}
+                                {taxon_map[int(l.name)].replace("_last",
+                                                                "_first") for l
+                                 in node}
                             ),
                             current_range
                         )
                         clade_count_map[parent_clade] += 1
                     case "range_end":
                         # Keeping just the taxon name as range for now...
-                        child0_clade_set = {taxon_map[int(l.name)].replace("_last", "_first") for l
-                                            in node.children[0]}
-                        child1_clade_set = {taxon_map[int(l.name)].replace("_last", "_first") for l
-                                            in node.children[1]}
+                        child0_clade_set = {
+                            taxon_map[int(l.name)].replace("_last", "_first")
+                            for l
+                            in node.children[0]}
+                        child1_clade_set = {
+                            taxon_map[int(l.name)].replace("_last", "_first")
+                            for l
+                            in node.children[1]}
                         parent_clade_set = {
-                            taxon_map[int(l.name)].replace("_last", "_first") for l in node
+                            taxon_map[int(l.name)].replace("_last", "_first")
+                            for l in node
                         }
 
-                        assert parent_clade_set == child0_clade_set.union(child1_clade_set), \
+                        assert parent_clade_set == child0_clade_set.union(
+                            child1_clade_set), \
                             "Failure in range_end case..."
 
                         # The following is a range end, hence one of the two clade sets
@@ -281,8 +305,9 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                                 )
                             )
                         else:
-                            raise AssertionError(f"Failure: range end should have "
-                                                 f"single taxon leaf set which is the range...")
+                            raise AssertionError(
+                                f"Failure: range end should have "
+                                f"single taxon leaf set which is the range...")
                         parent_range = None
                         if node.up:
                             if hasattr(node.up, "rangetype"):
@@ -291,7 +316,8 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                                     case "range_end":
                                         parent_range = f"{node.up.range}_first"
                                     case "sampled_ancestor":
-                                        assert hasattr(node.up, "sampledancestor"), \
+                                        assert hasattr(node.up,
+                                                       "sampledancestor"), \
                                             "This needs fixing"
                                         parent_range = f"{node.up.sampledancestor}_first"
                                     case "range_start":
@@ -299,7 +325,8 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                                             "something wrong with node.up.up case"
                                         if hasattr(node.up.up, "range"):
                                             parent_range = f"{node.up.up.range}_first"
-                                        elif hasattr(node.up.up, "sampledancestor"):
+                                        elif hasattr(node.up.up,
+                                                     "sampledancestor"):
                                             parent_range = f"{node.up.up.sampledancestor}_first"
                                     case _:
                                         pass
@@ -318,7 +345,8 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                         # We only count the clade, which is the taxon and itself as a range?
 
                         # todo fix this to something less messy...
-                        current_leaf = [l.name for l in node if l.dist == 0.0][0]
+                        current_leaf = [l.name for l in node if l.dist == 0.0][
+                            0]
                         range_taxon = reverse_taxon_map[f"{node.range}_first"]
 
                         # todo what is this assert doing?
@@ -348,17 +376,21 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
 
             else:
                 parent_clade_set = {
-                    taxon_map[int(l.name)].replace("_last", "_first") for l in node
+                    taxon_map[int(l.name)].replace("_last", "_first") for l in
+                    node
                 }
 
                 child0_clade_set = {
-                    taxon_map[int(l.name)].replace("_last", "_first") for l in node.children[0]
+                    taxon_map[int(l.name)].replace("_last", "_first") for l in
+                    node.children[0]
                 }
                 child1_clade_set = {
-                    taxon_map[int(l.name)].replace("_last", "_first") for l in node.children[1]
+                    taxon_map[int(l.name)].replace("_last", "_first") for l in
+                    node.children[1]
                 }
 
-                assert child1_clade_set.union(child0_clade_set) == parent_clade_set, \
+                assert child1_clade_set.union(
+                    child0_clade_set) == parent_clade_set, \
                     "Something is wrong with the clades..."
                 cur_range = None
                 parent_range = None
@@ -370,7 +402,8 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                             case "range_end":
                                 parent_range = f"{node.up.range}_first"
                             case "sampled_ancestor":
-                                assert hasattr(node.up, "sampledancestor"), "This needs fixing"
+                                assert hasattr(node.up,
+                                               "sampledancestor"), "This needs fixing"
                                 parent_range = f"{node.up.sampledancestor}_first"
                             case "range_start":
                                 assert node.up.range == node.range, "something wrong with node.up.up case"
@@ -383,29 +416,36 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                     elif hasattr(node.up, "range"):
                         parent_range = f"{node.up.range}_first"
 
-                parent_clade = SRangesClade(frozenset(parent_clade_set), parent_range)
+                parent_clade = SRangesClade(frozenset(parent_clade_set),
+                                            parent_range)
 
                 if node.children[0].orientation == "ancestor":
                     current_split = AncestralSplit(
-                        ancestor=SRangesClade(frozenset(child0_clade_set), cur_range),
-                        descendant=SRangesClade(frozenset(child1_clade_set), cur_range),
+                        ancestor=SRangesClade(frozenset(child0_clade_set),
+                                              cur_range),
+                        descendant=SRangesClade(frozenset(child1_clade_set),
+                                                cur_range),
                     )
                 else:
                     current_split = AncestralSplit(
-                        ancestor=SRangesClade(frozenset(child1_clade_set), cur_range),
-                        descendant=SRangesClade(frozenset(child0_clade_set), cur_range),
+                        ancestor=SRangesClade(frozenset(child1_clade_set),
+                                              cur_range),
+                        descendant=SRangesClade(frozenset(child0_clade_set),
+                                                cur_range),
                     )
 
                 clade_count_map[parent_clade] += 1
                 clade_split_count_map[parent_clade][current_split] += 1
 
     return (dict(clade_count_map),
-            {clade: dict(splits) for clade, splits in clade_split_count_map.items()})
+            {clade: dict(splits) for clade, splits in
+             clade_split_count_map.items()})
 
 
 def get_sranges_map_tree(
         clade_count_map,
         clade_split_count_map,
+        # todo Currently only for debugging
         taxon_map, reverse_taxon_map
 ):
     seen_resolved_clades = {}
@@ -420,7 +460,7 @@ def get_sranges_map_tree(
 
         for current_split in clade_split_count_map[current_clade]:
 
-            anc_prob, desc_prob = 0, 0
+            # anc_prob, desc_prob = 0, 0
 
             if len(current_split.ancestor.clade) == 1:
                 leaf_observations = sum(
@@ -428,7 +468,8 @@ def get_sranges_map_tree(
                      k.clade == current_split.ancestor.clade]
                 )
 
-                anc_prob = clade_count_map[current_split.ancestor] / leaf_observations
+                anc_prob = clade_count_map[
+                               current_split.ancestor] / leaf_observations
                 assert 0 <= anc_prob <= 1.0, "Prob failure1..."
             elif len(current_split.ancestor.clade) == 0:
                 anc_prob = 1
@@ -443,7 +484,8 @@ def get_sranges_map_tree(
                 )
 
                 # current_split.descendant, [k for k in clade_count_map if k.clade == current_split.descendant.clade]
-                desc_prob = clade_count_map[current_split.descendant] / leaf_observations
+                desc_prob = clade_count_map[
+                                current_split.descendant] / leaf_observations
                 assert 0 <= desc_prob <= 1.0, "Prob failure2..."
             elif not current_split.descendant.clade:
                 desc_prob = 1
@@ -457,36 +499,45 @@ def get_sranges_map_tree(
 
             if current_clade in seen_resolved_clades:
                 if seen_resolved_clades[current_clade][0] < split_probability:
-                    seen_resolved_clades[current_clade] = (split_probability, current_split, False)
-                elif seen_resolved_clades[current_clade][0] == split_probability:
+                    seen_resolved_clades[current_clade] = (split_probability,
+                                                           current_split, False)
+                elif seen_resolved_clades[current_clade][
+                    0] == split_probability:
                     # Tie breaking randomly, either keep the old or pick the new
                     import random
                     if random.random() < 0.5:
                         chosen_prob, chosen_split = split_probability, current_split
                     else:
-                        chosen_prob, chosen_split = seen_resolved_clades[current_clade][:2]
+                        chosen_prob, chosen_split = seen_resolved_clades[
+                            current_clade][:2]
 
                     # resolving tiebreak in the seen_resolved_clades, True indicates the tiebreak
-                    seen_resolved_clades[current_clade] = (chosen_prob, chosen_split, True)
+                    seen_resolved_clades[current_clade] = (chosen_prob,
+                                                           chosen_split, True)
             else:
-                seen_resolved_clades[current_clade] = (split_probability, current_split, False)
+                seen_resolved_clades[current_clade] = (split_probability,
+                                                       current_split, False)
     # End of seen_resolved_clades construction
 
     # todo we should use the named tuple to store prob and splits etc...
 
-    output = {}
+    # output = {}
     max_key_value = len(max(seen_resolved_clades.keys()))
-    all_root_clades = [k for k in seen_resolved_clades if len(k) == max_key_value]
-    max_root_prob = max(seen_resolved_clades[root][0] for root in all_root_clades)
+    all_root_clades = [k for k in seen_resolved_clades if
+                       len(k) == max_key_value]
+    max_root_prob = max(
+        seen_resolved_clades[root][0] for root in all_root_clades)
     best_roots = [root for root in all_root_clades
                   if seen_resolved_clades[root][0] == max_root_prob]
 
     if len(best_roots) > 1:
-        raise NotImplementedError("Currently no tie breaking support for multiple roots")
+        raise NotImplementedError(
+            "Currently no tie breaking support for multiple roots")
     else:
         root = best_roots[0]
 
-    map_tree = get_sranges_tree_from_seen_resolved_clades(seen_resolved_clades, root)
+    map_tree = get_sranges_tree_from_seen_resolved_clades(seen_resolved_clades,
+                                                          root)
 
     return map_tree
 
@@ -512,11 +563,62 @@ def get_sranges_tree_from_seen_resolved_clades(
         cur_anc = split.ancestor
         cur_descendant = split.descendant
 
-        def add_clade(parent_node, clade, orientation):
+        def add_clade(parent_node, clade, orientation, second_part_of_split):
             nonlocal icount, seen_resolved_clades
 
-            # leaf
-            if len(clade.clade) == 1:
+            # todo currently no way of recovering leaf ranges...
+
+            # todo this if is wrong, we need to decide based on the other part
+            #  of the split whether or not we have a SA, SR start or end, or a
+            #  regular clade that we need to add to the tree
+            # if not clade.clade and len(second_part_of_split.clade) == 1:
+            if not clade.clade:  # or not second_part_of_split.clade:
+                # Special clade to encode ranges and SAs
+                parent_range = getattr(parent_node, 'ancestral_range', 'MIA')
+                match parent_range:
+                    case clade.ancestral_range:
+                        label = clade.ancestral_range
+                        crud = parent_node.add_child(
+                            name=label,
+                            dist=0,
+                            support=2,
+                        )
+                        crud.add_feature('orientation', orientation)
+                        # todo fix
+                        crud.add_feature('ancestral_range', 'special-node')
+
+                        if clade.ancestral_range in second_part_of_split.clade:
+                            # Range start
+                            crud.add_feature('ccd_info', 'rangeStart')
+                        elif clade.ancestral_range == second_part_of_split.ancestral_range:
+                            # SA
+                            crud.add_feature('ccd_info', 'rangeEnd')
+                        else:
+                            crud.add_feature('ccd_info', 'notImplementedYet')
+                    case None:
+                        label = clade.ancestral_range
+                        crud = parent_node.add_child(
+                            name=label,
+                            dist=0,
+                            support=2,
+                        )
+                        crud.add_feature('orientation', orientation)
+                        crud.add_feature('ancestral_range', 'special-node')
+                        if clade.ancestral_range in second_part_of_split.clade:
+                            # Range start
+                            crud.add_feature('ccd_info', 'rangeStart')
+                        elif clade.ancestral_range == second_part_of_split.ancestral_range:
+                            # SA
+                            crud.add_feature('ccd_info', 'SA')
+                        else:
+                            crud.add_feature('ccd_info', 'notImplementedYet')
+                    case 'MIA':
+                        raise NotImplementedError(
+                            'If this happens, there is a development error...'
+                        )
+
+            elif len(clade.clade) == 1:
+                # leaf
                 label = next(iter(clade.clade))
 
                 leaf = parent_node.add_child(
@@ -539,7 +641,17 @@ def get_sranges_tree_from_seen_resolved_clades(
                 )
 
                 internal_node.add_feature("orientation", orientation)
-                internal_node.add_feature("ancestral_range", clade.ancestral_range)
+                internal_node.add_feature("ancestral_range",
+                                          clade.ancestral_range)
+
+                # todo probably look at parent range too
+                if clade.ancestral_range in second_part_of_split.clade:
+                    # Range start
+                    internal_node.add_feature('ccd_info', 'rangeStart')
+                elif clade.ancestral_range == second_part_of_split.ancestral_range:
+                    internal_node.add_feature('ccd_info', 'bla')
+                else:
+                    internal_node.add_feature('ccd_info', 'notImplementedYet')
 
                 icount += 1
 
@@ -548,8 +660,8 @@ def get_sranges_tree_from_seen_resolved_clades(
                     child_split = seen_resolved_clades[clade][1]
                     recursive_sranges_children(internal_node, child_split)
 
-        add_clade(node, cur_anc, "ancestor")
-        add_clade(node, cur_descendant, "descendant")
+        add_clade(node, cur_anc, "ancestor", cur_descendant)
+        add_clade(node, cur_descendant, "descendant", cur_anc)
 
     recursive_sranges_children(
         out_tree,

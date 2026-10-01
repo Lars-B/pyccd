@@ -1,8 +1,10 @@
 from pathlib import Path
 
 
+# test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
+#                   f"/examples/data/sr_example.trees")
 test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
-                  f"/examples/data/sr_example.trees")
+                  f"/examples/data/sr_small.trees")
 # test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
 #                   f"/examples/data/rep_3_srfbd_first_ucln.trees")
 
@@ -33,7 +35,7 @@ map_tree = sranges.get_sranges_map_tree(
 nwk_map = map_tree.write(
     format=5,
     format_root_node=True,
-    features=["orientation", "ancestral_range"]
+    features=["orientation", "ancestral_range", "ccd_info"]
 )
 
 print(nwk_map)
