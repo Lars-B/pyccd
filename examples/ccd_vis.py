@@ -4,251 +4,245 @@ import json
 def sranges_map_to_cytoscape_html(sranges_map, probability_map=None,
                                   output_file='cytoscape_tree.html'):
     """
-    sranges_map structure:
-      - Keys: SRangesClade objects
-      - Values: Dict[AncestralSplit, support_int]
-      - AncestralSplit.ancestor → SRangesClade
-      - AncestralSplit.descendant → SRangesClade
+    Minimal, validated Cytoscape HTML generator.
+    sranges_map: Dict[SRangesClade, Dict[AncestralSplit, int]]
     """
 
-    visited_clades = set()
-    nodes = []
-    edges = []
-    seen_edges = set()  # Prevent duplicate edges
+    # === PHASE 1: Collect unique clades ===
+    all_clades = {}  # clade_id → SRangesClade
 
     def clade_to_node_id(clade):
-        """Create unique, hashable node ID from SRangesClade."""
+        """Generate stable ID even for empty frozensets."""
+
+        # Case 1: Has taxa - use sorted taxa + range
         if clade.clade:
             taxa = tuple(sorted(clade.clade))
+            range_id = str(clade.ancestral_range) if clade.ancestral_range else 'NO_RANGE'
+            base_hash = hash(taxa)
+        # Case 2: Empty frozenset (special/range node) - use object id + range
         else:
-            taxa = ('SPECIAL_NODE',)
-        range_id = clade.ancestral_range or 'NO_RANGE'
-        node_id = f"clade_{hash(taxa) % 10000}_{range_id}"
-        return node_id
+            # Use object id as fallback for uniqueness
+            obj_id = id(clade)
+            range_id = str(clade.ancestral_range) if clade.ancestral_range else 'NO_RANGE'
+            base_hash = obj_id
+
+        # Combine into stable ID
+        clean_id = f"clade_{base_hash % 10000}_{range_id}".replace('"', '').replace('\n',
+                                                                                    '').strip()
+
+        # Final safety: ensure non-empty ID
+        if not clean_id or len(clean_id) < 5:
+            clean_id = f"clade_special_{base_hash}"
+
+        return str(clean_id)
+
+    # === PHASE 2: Traverse and collect edges ===
+    visited_clade_ids = set()
+    valid_edges = []  # List of dicts with source, target, weight
 
     def add_clade_recursive(clade):
-        if clade in visited_clades:
-            return
-
-        visited_clades.add(clade)
         clade_id = clade_to_node_id(clade)
 
-        # Determine if this is a terminal clade (leaf)
-        is_terminal = len(clade.clade) == 1 if clade.clade else False
+        # Skip if already processed
+        if clade_id in visited_clade_ids:
+            return
 
-        # Add node for this clade
-        nodes.append({
-            'data': {
-                'id': clade_id,
-                'label': f"{len(clade.clade) if clade.clade else 0}",
-                'terminal': is_terminal,
-                'range': clade.ancestral_range or '',
-                # 'num_resolutions': len(sranges_map.get(clade, {}))
-            }
-        })
+        visited_clade_ids.add(clade_id)
 
-        # If this clade has resolutions (splits), process them
-        if clade in sranges_map:
-            splits_dict = sranges_map[clade]
+        # Register this clade
+        all_clades[clade_id] = clade
 
-            for split, support in splits_dict.items():
-                # Split has .ancestor and .descendant (both SRangesClade)
-                anc_clade = split.ancestor
-                desc_clade = split.descendant
+        # Get splits for this clade
+        splits_dict = sranges_map.get(clade, {})
 
-                anc_id = clade_to_node_id(anc_clade)
-                desc_id = clade_to_node_id(desc_clade)
+        for split, support in splits_dict.items():
+            anc_clade = split.ancestor
+            desc_clade = split.descendant
 
-                # Add child clade nodes (they'll recurse too)
-                nodes.append({
-                    'data': {
-                        'id': anc_id,
-                        'label': f"{len(anc_clade.clade) if anc_clade.clade else 0}",
-                        'terminal': len(anc_clade.clade) == 1 if anc_clade.clade else False,
-                        'range': anc_clade.ancestral_range or ''
-                    }
-                })
+            anc_id = clade_to_node_id(anc_clade)
+            desc_id = clade_to_node_id(desc_clade)
 
-                nodes.append({
-                    'data': {
-                        'id': desc_id,
-                        'label': f"{len(desc_clade.clade) if desc_clade.clade else 0}",
-                        'terminal': len(desc_clade.clade) == 1 if desc_clade.clade else False,
-                        'range': desc_clade.ancestral_range or ''
-                    }
-                })
+            # Validate: both child clades must exist as keys in sranges_map OR be terminal
+            # Either way, register them so they appear as nodes
+            if anc_id not in all_clades:
+                all_clades[anc_id] = anc_clade
+            if desc_id not in all_clades:
+                all_clades[desc_id] = desc_clade
 
-                # Get probabilities
+            # Create edges - VALIDATE SOURCE/TARGET
+            if anc_id and desc_id and clade_id:
                 prob_anc = probability_map.get((clade_id, anc_id), 1.0) if probability_map else 1.0
                 prob_desc = probability_map.get((clade_id, desc_id),
                                                 1.0) if probability_map else 1.0
 
-                # Add edge to ancestor (avoid duplicates)
-                edge_key_anc = (clade_id, anc_id)
-                if edge_key_anc not in seen_edges:
-                    seen_edges.add(edge_key_anc)
-                    edges.append({
-                        'data': {
-                            'source': clade_id,
-                            'target': anc_id,
-                            'weight': support,
-                            'probability': prob_anc,
-                            'role': 'ancestor'
-                        }
-                    })
+                # Round probabilities to avoid floating point weirdness
+                prob_anc = round(float(prob_anc), 2)
+                prob_desc = round(float(prob_desc), 2)
 
-                    edges.append({
-                        'data': {
-                            'source': clade_id,
-                            'target': desc_id,
-                            'weight': support,
-                            'probability': prob_desc,
-                            'role': 'descendant'
-                        }
-                    })
+                # if not anc_id or not desc_id or not clade_id:
+                #     print(f"SKIPPING EDGE: parent={clade_id}, anc={anc_id}, desc={desc_id}")
+                #     continue  # Skip this split
 
-                # Recurse on child clades if they exist as keys
-                if anc_clade in sranges_map:
-                    add_clade_recursive(anc_clade)
-                if desc_clade in sranges_map:
-                    add_clade_recursive(desc_clade)
+                print(str(clade_id))
 
-    # Process all clades in the map - handles forests
+                valid_edges.append({
+                    'source': str(clade_id),
+                    'target': str(anc_id),
+                    'weight': int(support),
+                    'probability': prob_anc
+                })
+
+                valid_edges.append({
+                    'source': str(clade_id),
+                    'target': str(desc_id),
+                    'weight': int(support),
+                    'probability': prob_desc
+                })
+
+            # Recurse on children if they have splits
+            if anc_clade in sranges_map:
+                add_clade_recursive(anc_clade)
+            if desc_clade in sranges_map:
+                add_clade_recursive(desc_clade)
+
+    # Process all root clades
     for clade in sranges_map.keys():
-        if clade not in visited_clades:
-            add_clade_recursive(clade)
+        add_clade_recursive(clade)
 
-    # Build HTML template
-    html_template = f'''<!DOCTYPE html>
+    # === PHASE 3: Build final node/edge arrays ===
+    nodes = []
+    for clade_id, clade in all_clades.items():
+        is_terminal = len(clade.clade) == 1 if clade.clade else False
+        num_resolutions = len(sranges_map.get(clade, {}))
+
+        nodes.append({
+            'id': str(clade_id),
+            'label': str(len(clade.clade)) if clade.clade else '0',
+            'terminal': bool(is_terminal),
+            'num_resolutions': int(num_resolutions)
+        })
+
+    # === DEBUG: Verify data integrity ===
+    node_ids = {n['id'] for n in nodes}
+    orphan_edges = []
+    for e in valid_edges:
+        if e['source'] not in node_ids or e['target'] not in node_ids:
+            orphan_edges.append(e)
+
+    if orphan_edges:
+        print(f"WARNING: {len(orphan_edges)} edges reference non-existent nodes!")
+        for e in orphan_edges[:3]:
+            print(f"  Edge: {e['source']} -> {e['target']}")
+
+    # Remove orphan edges
+    valid_edges = [e for e in valid_edges if e['source'] in node_ids and e['target'] in node_ids]
+
+    print(f"Built graph: {len(nodes)} nodes, {len(valid_edges)} edges, {len(all_clades)} clades")
+
+    # === PHASE 4: Generate minimal HTML ===
+
+    # print("\n=== EDGE VALIDATION ===")
+    # for i, e in enumerate(valid_edges):
+    #     src = e.get('source')
+    #     tgt = e.get('target')
+    #     if not src or src == 'None' or src == 'null' or src == '':
+    #         print(f"BAD EDGE {i}: source={repr(src)}, target={repr(tgt)}")
+    #     if not tgt or tgt == 'None' or tgt == 'null' or tgt == '':
+    #         print(f"BAD EDGE {i}: source={repr(src)}, target={repr(tgt)}")
+    # print("=" * 25)
+
+    nodes_json = json.dumps(nodes, separators=(',', ':'))
+    edges_json = json.dumps(valid_edges, separators=(',', ':'))
+
+
+
+    html_content = f'''<!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>SRanges Tree Visualization</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
-    <style>
-        body {{ margin: 0; padding: 0; overflow: hidden; }}
-        #cy {{ width: 100vw; height: 100vh; }}
-        #info {{
-            position: absolute; top: 10px; left: 10px; z-index: 999;
-            background: rgba(0,0,0,0.7); color: white; padding: 10px; 
-            border-radius: 5px; max-width: 300px; font-family: monospace;
-        }}
-        #stats {{
-            position: absolute; bottom: 10px; left: 10px; z-index: 999;
-            background: rgba(0,0,0,0.7); color: white; padding: 10px;
-            border-radius: 5px;
-        }}
-    </style>
+<meta charset="UTF-8">
+<title>SRanges Tree</title>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+<style>
+#cy{{width:100vw;height:100vh}}
+#debug{{position:absolute;top:10px;left:10px;background:#333;color:#fff;padding:10px;font-family:monospace;z-index:999;max-width:300px;}}
+</style>
 </head>
 <body>
-    <div id="info">Hover for details</div>
-    <div id="stats">Loading...</div>
-    <div id="cy"></div>
-    <script>
-        var nodes = {json.dumps(nodes)};
-        var edges = {json.dumps(edges)};
+<div id="debug">Loading...</div>
+<div id="cy"></div>
+<script>
+window.onload = function() {{
+  try {{
+    const data = {{nodes:{nodes_json},edges:{edges_json}}};
+    const elements = {{
+      nodes: data.nodes.map(n => ({{ data: n }})),
+      edges: data.edges.map(e => ({{ data: e }}))
+    }};
+    // Debug output
+    document.getElementById('debug').innerHTML = 
+      'Nodes: ' + data.nodes.length + '<br>' +
+      'Edges: ' + data.edges.length + '<br>' +
+      'Status: Building...';
 
-        console.log('Nodes:', nodes.length, 'Edges:', edges.length);
-        document.getElementById('stats').innerHTML = 
-            '<b>Stats:</b><br>Nodes: ' + nodes.length + 
-            '<br>Edges: ' + edges.length;
+    const cy = cytoscape({{
+      container: document.getElementById('cy'),
+      elements: elements,
+      style: [
+        {{selector:'node',style:{{
+          'background-color':'#6d4aff',
+          'border-color':'#ffffff',
+          'border-width':2,
+          'label':'data(label)',
+          'color':'#ffffff',
+          'font-size':10,
+          'text-valign':'center',
+          'text-halign':'center',
+          'width':35,
+          'height':35
+        }}}},
+        {{selector:'node[terminal=true]',style:{{
+          'background-color':'#ff9999'
+        }}}},
+        {{selector:'edge',style:{{
+          'line-color':'#64bf64',
+          'width':2,
+          'target-arrow-shape':'triangle',
+          'curve-style':'haystack'
+        }}}},
+        {{selector:':selected',style:{{
+          'border-color':'#ffd700',
+          'border-width':4
+        }}}}
+      ],
+      layout:{{name:'grid',rows:Math.ceil(Math.sqrt(data.nodes.length))}},
+      minZoom:0.1,
+      maxZoom:3
+    }});
 
-        var cy = cytoscape({{
-            container: document.getElementById('cy'),
-            elements: {{ nodes: nodes, edges: edges }},
-            style: [
-                {{
-                    selector: 'node',
-                    style: {{
-                        'background-color': 'data(terminal) ? "#ff9999" : "#6d4aff"',
-                        'border-width': 2,
-                        'border-color': '#ffffff',
-                        'label': 'data(label)',
-                        'font-size': 'data(num_resolutions) ? data(num_resolutions)*2 + 8 : 10px',
-                        'color': 'white',
-                        'text-valign': 'center',
-                        'text-halign': 'center',
-                        'width': 'data(terminal) ? 25 : 35 + data(num_resolutions, 0)*3',
-                        'height': 'data(terminal) ? 25 : 35 + data(num_resolutions, 0)*3'
-                    }}
-                }},
-                {{
-                    selector: 'edge',
-                    style: {{
-                        'width': 'max(1, data(weight))',
-                        'line-color': 'rgb(100, ' + Math.floor(data(probability)*150) + ', 100)',
-                        'opacity': 'max(0.3, data(probability))',
-                        'curve-style': 'bezier',
-                        'target-arrow-shape': 'triangle',
-                        'arrow-scale': 1.2,
-                        'label': 'data(weight)',
-                        'font-size': '9px',
-                        'color': 'white',
-                        'text-outline-color': 'black',
-                        'text-outline-width': 1
-                    }}
-                }},
-                {{
-                    selector: ':selected',
-                    style: {{
-                        'border-width': 4,
-                        'border-color': '#ffd700',
-                        'background-opacity': 1
-                    }}
-                }},
-                {{
-                    selector: 'edge:selected',
-                    style: {{
-                        'line-color': '#ffd700',
-                        'width': 4
-                    }}
-                }}
-            ],
-            layout: {{ 
-                name: 'dagre', 
-                rankDir: 'TB',
-                nodeSep': 50,
-                rankSep': 100
-            }},
-            minZoom: 0.1,
-            maxZoom: 5,
-            wheelSensitivity: 0.3,
-            selectionType: 'multiselect'
-        }});
+    document.getElementById('debug').innerHTML = 
+      'Nodes: ' + data.nodes.length + '<br>' +
+      'Edges: ' + data.edges.length + '<br>' +
+      'Status: Ready - hover/click nodes';
 
-        // Hover info panel
-        cy.on('mouseover', 'node, edge', function(e){{
-            var data = e.target.data();
-            var html = '<b>' + (data.id || data.role) + '</b><br>';
-            if (data.id) {{
-                html += 'Terminal: ' + (data.terminal ? 'Yes' : 'No') + '<br>';
-                html += 'Range: ' + (data.range || 'None') + '<br>';
-                if (data.num_resolutions !== undefined) {{
-                    html += 'Resolutions: ' + data.num_resolutions + '<br>';
-                }}
-            }}
-            if (data.weight !== undefined) {{
-                html += 'Support: ' + data.weight + '<br>';
-                html += 'Probability: ' + data.probability.toFixed(2) + '<br>';
-            }}
-            document.getElementById('info').innerHTML = html;
-        }});
+    // Click handler
+    cy.on('tap','node',function(evt){{
+      const nd=evt.target;
+      const d=nd.data();
+      alert('ID:'+d.id+'\\nTerminal:'+d.terminal+'\\nLabel:'+d.label);
+    }});
 
-        cy.on('mouseout', 'node, edge', function(e){{
-            document.getElementById('info').innerHTML = 'Hover for details<br>Click to select';
-        }});
-
-        // Double-click to fit
-        cy.on('dblclick', function(){{
-            cy.fit();
-        }});
-    </script>
+    console.log('Cytoscape initialized successfully');
+  }} catch(e) {{
+    document.getElementById('debug').innerHTML = 'ERROR: '+e.message;
+    console.error(e);
+  }}
+}};
+</script>
 </body>
 </html>'''
 
     with open(output_file, 'w') as f:
-        f.write(html_template)
+        f.write(html_content)
 
-    print(f"Saved interactive visualization to {output_file}")
-    print(f"Graph has {len(nodes)} nodes and {len(edges)} edges")
+    print(f"Saved: {output_file}")
     return output_file

@@ -5,6 +5,10 @@ from pathlib import Path
 #                   f"/examples/data/sr_example.trees")
 test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
                   f"/examples/data/sr_small.trees")
+
+# test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
+#                   f"/examples/data/toy_posterior.trees")
+
 # test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
 #                   f"/examples/data/rep_3_srfbd_first_ucln.trees")
 
@@ -25,20 +29,36 @@ taxon_map = map
 
 reverse_taxon_map = {value: key for key, value in taxon_map.items()}
 
-map_tree = sranges.get_sranges_map_tree(
-        clade_counts,
-        clade_split_counts,
-        taxon_map,
-        reverse_taxon_map
-)
+# making a dot graph of the CCD
 
-nwk_map = map_tree.write(
-    format=5,
-    format_root_node=True,
-    features=["orientation", "ancestral_range", "ccd_info"]
-)
+from graph_generation import sranges_map_to_networkx
 
-print(nwk_map)
+# G = sranges_map_to_networkx(clade_split_counts)
+
+from ccd_vis import sranges_map_to_cytoscape_html
+
+sranges_map_to_cytoscape_html(clade_split_counts)
+
+# from networkx.drawing.nx_agraph import write_dot
+#
+# write_dot(G, "testing.dot")
+#
+# print("help me.")
+
+# map_tree = sranges.get_sranges_map_tree(
+#         clade_counts,
+#         clade_split_counts,
+#         taxon_map,
+#         reverse_taxon_map
+# )
+#
+# nwk_map = map_tree.write(
+#     format=5,
+#     format_root_node=True,
+#     features=["orientation", "ancestral_range", "ccd_info"]
+# )
+#
+# print(nwk_map)
 
 # for i in range(len(trees)):
 #     clade_counts, clade_split_counts = sranges.get_sranges_map([trees[i]], map)
