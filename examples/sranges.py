@@ -19,7 +19,7 @@ from brokilon.core import read_nexus_trees
 
 trees, map = read_nexus_trees(test_tree_file, parse_taxon_map=True)
 
-trees = trees[:10]
+# trees = trees[:10]
 
 from brokilon.ccd.domain.sranges import sranges
 
@@ -37,7 +37,7 @@ from graph_generation import sranges_map_to_networkx
 
 from ccd_vis import sranges_map_to_cytoscape_html
 
-sranges_map_to_cytoscape_html(clade_split_counts)
+sranges_map_to_cytoscape_html(clade_split_counts, reverse_taxon_map)
 
 # from networkx.drawing.nx_agraph import write_dot
 #
