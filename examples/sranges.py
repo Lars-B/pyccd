@@ -37,7 +37,7 @@ from graph_generation import sranges_map_to_networkx
 
 from ccd_vis import sranges_map_to_cytoscape_html
 
-sranges_map_to_cytoscape_html(clade_split_counts, reverse_taxon_map)
+sranges_map_to_cytoscape_html(clade_split_counts, reverse_taxon_map, clade_counts)
 
 # from networkx.drawing.nx_agraph import write_dot
 #

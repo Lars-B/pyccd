@@ -1,8 +1,8 @@
 import json
 
 
-def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, probability_map=None,
-                                  output_file='cytoscape_tree.html'):
+def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_map,
+                                  output_file='sranges-ccd-vis.html'):
     """
     Minimal, validated Cytoscape HTML generator.
     sranges_map: Dict[SRangesClade, Dict[AncestralSplit, int]]
@@ -42,8 +42,10 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, probability_ma
     visited_clade_ids = set()
     valid_edges = []
     node_depths = {}  # clade_id → depth integer
+    seen_edge_pairs = set()
 
-    def add_clade_recursive(clade, current_depth=0):
+    def add_clade_recursive(clade):
+
         clade_id = clade_to_node_id(clade)
 
         # Skip if already processed
@@ -51,7 +53,7 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, probability_ma
             return
 
         visited_clade_ids.add(clade_id)
-        node_depths[clade_id] = current_depth  # Track depth HERE
+        node_depths[clade_id] = len(clade)  # Track depth HERE
 
         # Register this clade
         all_clades[clade_id] = clade
@@ -74,38 +76,33 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, probability_ma
 
             # Create edges - VALIDATE SOURCE/TARGET
             if anc_id and desc_id and clade_id:
-                prob_anc = probability_map.get((clade_id, anc_id),
-                                               1.0) if probability_map else 1.0
-                prob_desc = probability_map.get((clade_id, desc_id),
-                                                1.0) if probability_map else 1.0
+                e1 = (clade_id, anc_id)
+                e2 = (clade_id, desc_id)
 
-                prob_anc = round(float(prob_anc), 2)
-                prob_desc = round(float(prob_desc), 2)
-
-                valid_edges.append({
-                    'source': str(clade_id),
-                    'target': str(anc_id),
-                    'weight': int(support),
-                    'probability': prob_anc
-                })
-
-                valid_edges.append({
-                    'source': str(clade_id),
-                    'target': str(desc_id),
-                    'weight': int(support),
-                    'probability': prob_desc
-                })
+                if e1 not in seen_edge_pairs:
+                    seen_edge_pairs.add(e1)
+                    valid_edges.append({
+                        'source': str(clade_id),
+                        'target': str(anc_id),
+                        'weight': int(support),
+                    })
+                if e2 not in seen_edge_pairs:
+                    seen_edge_pairs.add(e2)
+                    valid_edges.append({
+                        'source': str(clade_id),
+                        'target': str(desc_id),
+                        'weight': int(support),
+                    })
 
             # Recurse with incremented depth
             if anc_clade in sranges_map:
-                add_clade_recursive(anc_clade, current_depth + 1)
+                add_clade_recursive(anc_clade)
             if desc_clade in sranges_map:
-                add_clade_recursive(desc_clade, current_depth + 1)
+                add_clade_recursive(desc_clade)
 
-        # Process all root clades
-
+    # Process all root clades
     for clade in sranges_map.keys():
-        add_clade_recursive(clade, 0)
+        add_clade_recursive(clade)
 
     # === Now build edges (existing code) ===
 
@@ -120,23 +117,8 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, probability_ma
             'label': str(len(clade.clade)) if clade.clade else '0',
             'terminal': bool(is_terminal),
             'num_resolutions': int(num_resolutions),
-            'depth': int(node_depths.get(clade_id, 0))
+            'freq': clade_count_map.get(clade, -1),
         })
-
-    # === DEBUG: Verify data integrity ===
-    node_ids = {n['id'] for n in nodes}
-    orphan_edges = []
-    for e in valid_edges:
-        if e['source'] not in node_ids or e['target'] not in node_ids:
-            orphan_edges.append(e)
-
-    if orphan_edges:
-        print(f"WARNING: {len(orphan_edges)} edges reference non-existent nodes!")
-        for e in orphan_edges[:3]:
-            print(f"  Edge: {e['source']} -> {e['target']}")
-
-    # Remove orphan edges
-    valid_edges = [e for e in valid_edges if e['source'] in node_ids and e['target'] in node_ids]
 
     print(f"Built graph: {len(nodes)} nodes, {len(valid_edges)} edges, {len(all_clades)} clades")
 
@@ -147,7 +129,7 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, probability_ma
 <html>
 <head>
 <meta charset="UTF-8">
-<title>SRanges Tree</title>
+<title>SRanges CCD</title>
 <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
 <style>
 #cy{{width:100vw;height:100vh;background-color:#e5e5e5;}}
@@ -171,8 +153,6 @@ window.onload = function() {{
       'Edges: ' + data.edges.length + '<br>' +
       'Status: Building...';
     
-    data.nodes.sort((a, b) => a.depth - b.depth || b.num_resolutions - a.num_resolutions);
-    
     const cy = cytoscape({{
       container: document.getElementById('cy'),
       elements: elements,
@@ -194,9 +174,11 @@ window.onload = function() {{
         }}}},
         {{selector:'edge',style:{{
           'line-color':'#64bf64',
-          'width':2,
+          'width':4,
+          'curve-style': 'bezier',
           'target-arrow-shape':'triangle',
-          'curve-style':'haystack'
+          'arrow-scale': 2.0,
+          'targer-arrow-color': "#ccc"
         }}}},
         {{selector:':selected',style:{{
           'border-color':'#ffd700',
@@ -228,7 +210,7 @@ window.onload = function() {{
     cy.on('tap','node',function(evt){{
       const nd=evt.target;
       const d=nd.data();
-      alert('ID:'+d.id+'\\nTerminal:'+d.terminal+'\\nLabel:'+d.label);
+      alert('ID:'+d.id+'\\nTerminal:'+d.terminal+'\\nLabel:'+d.label+'\\nFreq:'+d.freq);
     }});
 
     console.log('Cytoscape initialized successfully');
