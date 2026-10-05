@@ -126,102 +126,175 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
     edges_json = json.dumps(valid_edges, separators=(',', ':'))
 
     html_content = f'''<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>SRanges CCD</title>
-<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
-<style>
-#cy{{width:100vw;height:100vh;background-color:#e5e5e5;}}
-#debug{{position:absolute;top:10px;left:10px;background:#333;color:#fff;padding:10px;font-family:monospace;z-index:999;max-width:300px;}}
-</style>
-</head>
-<body>
-<div id="debug">Loading...</div>
-<div id="cy"></div>
-<script>
-window.onload = function() {{
-  try {{
-    const data = {{nodes:{nodes_json},edges:{edges_json}}};
-    const elements = {{
-      nodes: data.nodes.map(n => ({{ data: n }})),
-      edges: data.edges.map(e => ({{ data: e }}))
+    <html>
+    <head>
+    <meta charset="UTF-8">
+    <title>SRanges CCD</title>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+    <style>
+    #cy{{width:100vw;height:100vh;background-color:#e5e5e5;}}
+    #controls{{position:absolute;top:10px;left:10px;background:#333;color:#fff;padding:10px;border-radius:5px;font-family:monospace;z-index:999;max-width:300px;}}
+    #search{{width:100%;padding:5px;margin-bottom:5px;font-size:12px;box-sizing:border-box;}}
+    #results{{margin-top:5px;font-size:11px;color:#aaa;}}
+    #info{{position:absolute;top:70px;left:10px;background:#333;color:#fff;padding:10px;border-radius:5px;font-family:monospace;max-width:300px;z-index:999;}}
+    #stats{{position:absolute;bottom:10px;left:10px;background:#333;color:#fff;padding:10px;border-radius:5px;font-family:monospace;z-index:999;}}
+    </style>
+    </head>
+    <body>
+    <div id="controls">
+        <input type="text" id="search" placeholder="Search clade by ID, label, or range...">
+        <div id="results">0 matches</div>
+    </div>
+    <div id="info">Hover or click nodes for details</div>
+    <div id="stats">Loading graph...</div>
+    <div id="cy"></div>
+    <script>
+    window.onload = function() {{
+      try {{
+        const data = {{nodes:{nodes_json},edges:{edges_json}}};
+        const elements = {{
+          nodes: data.nodes.map(n => ({{ data: n }})),
+          edges: data.edges.map(e => ({{ data: e }}))
+        }};
+
+        document.getElementById('stats').innerHTML = 
+          'Nodes: ' + data.nodes.length + '<br>' +
+          'Edges: ' + data.edges.length + '<br>' +
+          'Status: Building...';
+
+        const cy = cytoscape({{
+          container: document.getElementById('cy'),
+          elements: elements,
+          style: [
+            {{selector:'node',style:{{
+              'background-color':'#6d4aff',
+              'border-color':'#ffffff',
+              'border-width':2,
+              'label':'data(id)',
+              'color':'#000000',
+              'font-size':10,
+              'text-valign':'center',
+              'text-halign':'center',
+              'width':'mapData(num_resolutions, 0, 20, 35, 80)',
+              'height':'mapData(num_resolutions, 0, 20, 35, 80)',
+            }}}},
+            {{selector:'node[terminal=true]',style:{{
+              'background-color':'#ff9999'
+            }}}},
+            {{selector:'node.matched',style:{{
+              'background-color':'#ffd700',
+              'border-color':'#ff8800',
+              'border-width':4
+            }}}},
+            {{selector:'edge',style:{{
+              'line-color':'#64bf64',
+              'width':4,
+              'curve-style': 'bezier',
+              'target-arrow-shape':'triangle',
+              'arrow-scale': 2.0,
+              'target-arrow-color': '#64bf64'
+            }}}},
+            {{selector:':selected',style:{{
+              'border-color':'#ffd700',
+              'border-width':4
+            }}}}
+          ],
+          layout: {{
+                name: 'breadthfirst',
+                directed: true,
+                padding: 100,
+                spacingFactor: 2.5,
+                avoidOverlap: 0.8,
+                pack: true,
+                roots: function(node) {{
+                  return node.data('depth') === 0;
+                }}
+            }},
+          minZoom:0.1,
+          maxZoom:3
+        }});
+
+        // Initialize search
+        const searchInput = document.getElementById('search');
+        const resultsDiv = document.getElementById('results');
+
+        searchInput.addEventListener('keyup', function() {{
+          const query = this.value.toLowerCase().trim();
+          const matches = [];
+
+          cy.nodes().removeClass('matched');
+
+          if (query === '') {{
+            resultsDiv.innerText = '0 matches';
+            return;
+          }}
+
+          cy.nodes().forEach(node => {{
+            const d = node.data();
+            const searchText = [
+              d.id || '',
+              d.label || '',
+              d.range || '',
+              String(d.terminal || '')
+            ].join(' ').toLowerCase();
+
+            if (searchText.includes(query)) {{
+              node.addClass('matched');
+              matches.push(node);
+            }}
+          }});
+
+          if (matches.length > 0) {{
+            const firstMatch = cy.nodes('.matched').first();
+            firstMatch.select();
+            cy.fit(firstMatch, 100);
+          }}
+
+          resultsDiv.innerText = matches.length + ' match' + (matches.length !== 1 ? 'es' : '') + ' found';
+        }});
+
+        // Click handler
+        cy.on('tap','node',function(evt){{
+          const nd=evt.target;
+          const d=nd.data();
+          const info = 
+            '<b>ID:</b> ' + d.id + '<br>' +
+            '<b>Terminal:</b> ' + d.terminal + '<br>' +
+            '<b>Label:</b> ' + d.label + '<br>' +
+            '<b>Depth:</b> ' + (d.depth || 'N/A') + '<br>' +
+            '<b>Resolutions:</b> ' + (d.num_resolutions || 'N/A');
+          document.getElementById('info').innerHTML = info;
+        }});
+
+        // Hover handler
+        cy.on('mouseover','node',function(evt){{
+          const d=evt.target.data();
+          document.getElementById('info').innerHTML = 
+            '<b>ID:</b> ' + d.id + '<br>' +
+            '<b>Terminal:</b> ' + d.terminal + '<br>' +
+            '<b>Label:</b> ' + d.label + '<br>' +
+            '<b>Depth:</b> ' + (d.depth || 'N/A') + '<br>' +
+            '<b>Resolutions:</b> ' + (d.num_resolutions || 'N/A');
+        }});
+
+        cy.on('mouseout','node',function(){{
+          document.getElementById('info').innerHTML = 'Hover or click nodes for details';
+        }});
+
+        document.getElementById('stats').innerHTML = 
+          'Nodes: ' + data.nodes.length + '<br>' +
+          'Edges: ' + data.edges.length + '<br>' +
+          'Status: Ready - use search box above';
+
+        console.log('Cytoscape initialized successfully');
+      }} catch(e) {{
+        document.getElementById('stats').innerHTML = 'ERROR: '+e.message;
+        console.error(e);
+      }}
     }};
-    // Debug output
-    document.getElementById('debug').innerHTML = 
-      'Nodes: ' + data.nodes.length + '<br>' +
-      'Edges: ' + data.edges.length + '<br>' +
-      'Status: Building...';
-    
-    const cy = cytoscape({{
-      container: document.getElementById('cy'),
-      elements: elements,
-      style: [
-        {{selector:'node',style:{{
-          'background-color':'#6d4aff',
-          'border-color':'#ffffff',
-          'border-width':2,
-          'label':'data(id)',
-          'color':'#000000',
-          'font-size':10,
-          'text-valign':'center',
-          'text-halign':'center',
-          'width':'mapData(num_resolutions, 0, 20, 35, 80)',
-          'height':'mapData(num_resolutions, 0, 20, 35, 80)',
-        }}}},
-        {{selector:'node[terminal=true]',style:{{
-          'background-color':'#ff9999'
-        }}}},
-        {{selector:'edge',style:{{
-          'line-color':'#64bf64',
-          'width':4,
-          'curve-style': 'bezier',
-          'target-arrow-shape':'triangle',
-          'arrow-scale': 2.0,
-          'targer-arrow-color': "#ccc"
-        }}}},
-        {{selector:':selected',style:{{
-          'border-color':'#ffd700',
-          'border-width':4
-        }}}}
-      ],
-      layout: {{
-            name: 'breadthfirst',
-            directed: true,
-            padding: 100,
-            spacingFactor: 2.5,  // More spread between levels
-            avoidOverlap: 0.8,   // Prevent node overlap
-            pack: true,          // Handle disconnected components
-            roots: function(node) {{
-                    // Put high-depth nodes at top (invert order)
-                    return node.data('depth') === 0;
-                    }}
-        }},
-      minZoom:0.1,
-      maxZoom:3
-    }});
-
-    document.getElementById('debug').innerHTML = 
-      'Nodes: ' + data.nodes.length + '<br>' +
-      'Edges: ' + data.edges.length + '<br>' +
-      'Status: Ready - hover/click nodes';
-
-    // Click handler
-    cy.on('tap','node',function(evt){{
-      const nd=evt.target;
-      const d=nd.data();
-      alert('ID:'+d.id+'\\nTerminal:'+d.terminal+'\\nLabel:'+d.label+'\\nFreq:'+d.freq);
-    }});
-
-    console.log('Cytoscape initialized successfully');
-  }} catch(e) {{
-    document.getElementById('debug').innerHTML = 'ERROR: '+e.message;
-    console.error(e);
-  }}
-}};
-</script>
-</body>
-</html>'''
+    </script>
+    </body>
+    </html>'''
 
     with open(output_file, 'w') as f:
         f.write(html_content)
