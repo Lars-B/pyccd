@@ -1,10 +1,10 @@
 from pathlib import Path
 
 
-# test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
-#                   f"/examples/data/sr_example.trees")
 test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
-                  f"/examples/data/sr_small.trees")
+                  f"/examples/data/sr_example.trees")
+# test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
+#                   f"/examples/data/sr_small.trees")
 
 # test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
 #                   f"/examples/data/toy_posterior.trees")
@@ -48,16 +48,17 @@ seen_resolved, map_tree = sranges.get_sranges_map_tree(
         reverse_taxon_map
 )
 
-# for clade in seen_resolved:
-#     cur_c = str({reverse_taxon_map[c] for c in clade.clade})
-#     cur_range = reverse_taxon_map[clade.ancestral_range] if clade.ancestral_range is not None else "NR"
-#     out = f"{cur_c}_{cur_range}"
-#     print(out)
+print(f"length of seen resolved: {len(seen_resolved.keys())}")
+for clade in seen_resolved:
+    cur_c = str({reverse_taxon_map[c] for c in clade.clade})
+    cur_range = reverse_taxon_map[clade.ancestral_range] if clade.ancestral_range is not None else "NR"
+    out = f"{cur_c}_{cur_range}"
+    print(out)
 
 nwk_map = map_tree.write(
     format=5,
     format_root_node=True,
-    features=["orientation", "ancestral_range", "ccd_info"]
+    features=["orientation", "ancestral_range"]
 )
 
 print(nwk_map)
