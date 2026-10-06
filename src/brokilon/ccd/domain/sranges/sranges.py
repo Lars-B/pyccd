@@ -99,6 +99,8 @@ def prelabel_tree(tree, taxon_map):
         raise ValueError("This is not possible and a bug is found.")
     print(
         f"Tree has {len(sampled_ancestors)} SAs and {len(opened_ranges)} ranges.")
+    # returning set of all taxa that are a range and all that are SA
+    return opened_ranges, sampled_ancestors
 
 
 def get_sranges_map(trees, taxon_map, ccd_type=1):
@@ -109,7 +111,7 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
 
     # for node in (node for t in trees for node in t.traverse("levelorder")):
     for t in trees:
-        prelabel_tree(t, taxon_map)
+        sranges_set, sampled_ancestors = prelabel_tree(t, taxon_map)
 
         for node in t.traverse("levelorder"):
             # We can ignore all leafs that are 0.0, i.e. internal leafs that encode a non leaf...
@@ -437,14 +439,17 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                 clade_count_map[parent_clade] += 1
                 clade_split_count_map[parent_clade][current_split] += 1
 
-    return (dict(clade_count_map),
-            {clade: dict(splits) for clade, splits in
-             clade_split_count_map.items()})
+    return (
+        dict(clade_count_map),
+        {clade: dict(splits) for clade, splits in clade_split_count_map.items()},
+        sranges_set, sampled_ancestors
+    )
 
 
 def get_sranges_map_tree(
         clade_count_map,
         clade_split_count_map,
+        sranges_set, sampled_ancestors,
         # todo Currently only for debugging
         taxon_map, reverse_taxon_map
 ):
@@ -519,8 +524,6 @@ def get_sranges_map_tree(
                                                        current_split, False)
     # End of seen_resolved_clades construction
 
-    # todo we should use the named tuple to store prob and splits etc...
-
     # output = {}
     max_key_value = len(max(seen_resolved_clades.keys()))
     all_root_clades = [k for k in seen_resolved_clades if
@@ -536,15 +539,19 @@ def get_sranges_map_tree(
     else:
         root = best_roots[0]
 
-    map_tree = get_sranges_tree_from_seen_resolved_clades(seen_resolved_clades,
-                                                          root)
-
-    return map_tree
+    map_tree = get_sranges_tree_from_seen_resolved_clades(
+        seen_resolved_clades,
+        root,
+        sranges_set, sampled_ancestors
+    )
+    #
+    return seen_resolved_clades, map_tree
 
 
 def get_sranges_tree_from_seen_resolved_clades(
         seen_resolved_clades,
-        root_clade
+        root_clade,
+        sranges_set, sampled_ancestors
 ):
     # todo ignoring tie breaking for now...
     # todo ignoring ranges at the moment...
@@ -559,60 +566,53 @@ def get_sranges_tree_from_seen_resolved_clades(
 
     def recursive_sranges_children(node, split):
         nonlocal icount, seen_resolved_clades
+        nonlocal sranges_set
 
         cur_anc = split.ancestor
         cur_descendant = split.descendant
 
         def add_clade(parent_node, clade, orientation, second_part_of_split):
             nonlocal icount, seen_resolved_clades
-
-            # todo currently no way of recovering leaf ranges...
-
-            # todo this if is wrong, we need to decide based on the other part
-            #  of the split whether or not we have a SA, SR start or end, or a
-            #  regular clade that we need to add to the tree
-            # if not clade.clade and len(second_part_of_split.clade) == 1:
+            nonlocal sranges_set
             if not clade.clade:  # or not second_part_of_split.clade:
+
+                if len(parent_node.children) == 2:
+                    # This empty node was already dealt with in another case
+                    return
                 # Special clade to encode ranges and SAs
                 parent_range = getattr(parent_node, 'ancestral_range', 'MIA')
+
+                assert clade.ancestral_range not in second_part_of_split.clade, "If not true, we are not closing a range."
                 match parent_range:
                     case clade.ancestral_range:
-                        label = clade.ancestral_range
-                        crud = parent_node.add_child(
-                            name=label,
-                            dist=0,
-                            support=2,
-                        )
-                        crud.add_feature('orientation', orientation)
-                        # todo fix
-                        crud.add_feature('ancestral_range', 'special-node')
+                        # parent range is same as current node
+                        assert clade.ancestral_range not in second_part_of_split.clade, "If not true, we are not closing a range."
+                        # we are adding a range end node
 
-                        if clade.ancestral_range in second_part_of_split.clade:
-                            # Range start
-                            crud.add_feature('ccd_info', 'rangeStart')
-                        elif clade.ancestral_range == second_part_of_split.ancestral_range:
-                            # SA
-                            crud.add_feature('ccd_info', 'rangeEnd')
-                        else:
-                            crud.add_feature('ccd_info', 'notImplementedYet')
-                    case None:
-                        label = clade.ancestral_range
-                        crud = parent_node.add_child(
-                            name=label,
-                            dist=0,
+                        range_end_node = parent_node.add_child(
+                            name=clade.ancestral_range.replace("_first", "_last"),
+                            dist=1,
                             support=2,
                         )
-                        crud.add_feature('orientation', orientation)
-                        crud.add_feature('ancestral_range', 'special-node')
-                        if clade.ancestral_range in second_part_of_split.clade:
-                            # Range start
-                            crud.add_feature('ccd_info', 'rangeStart')
-                        elif clade.ancestral_range == second_part_of_split.ancestral_range:
-                            # SA
-                            crud.add_feature('ccd_info', 'SA')
-                        else:
-                            crud.add_feature('ccd_info', 'notImplementedYet')
+                        range_end_node.add_feature('orientation', orientation)
+                        range_end_node.add_feature('ancestral_range', clade.ancestral_range)
+
+                    case None:
+                        # SA case
+                        assert clade.ancestral_range not in sranges_set, "Assuming this is a SA"
+                        assert clade.ancestral_range not in second_part_of_split.clade, "Assuming SA"
+
+                        sampled_ancestor_node = parent_node.add_child(
+                            name=clade.ancestral_range,
+                            dist=0.1,  # todo short dist for debug
+                            support=2,
+                        )
+                        # todo orientation should be ancestor and then descendant for the other half
+                        sampled_ancestor_node.add_feature('orientation', orientation)
+                        sampled_ancestor_node.add_feature('ancestral_range', 'sampled_ancestor')
+
                     case 'MIA':
+                        # TODO whats this case for?
                         raise NotImplementedError(
                             'If this happens, there is a development error...'
                         )
@@ -627,31 +627,86 @@ def get_sranges_tree_from_seen_resolved_clades(
                     # mean(branch_length_map.get(clade, [1])),
                     support=1.0,
                 )
-                # add feature ancestor or descendant
-                leaf.add_feature("orientation", orientation)
-                leaf.add_feature('ancestral_range', clade.ancestral_range)
+                if clade.ancestral_range and second_part_of_split.clade == frozenset():
+                    assert clade.ancestral_range != label, "Should not happen at the moment, might happen later..."
+                    # assert, "Assuming that range ends above"
+
+                    # range_end_node = parent_node.add_child(
+                    #     name=second_part_of_split.ancestral_range.replace("_first", "_last"),
+                    #     dist=2.5,
+                    #     support=1,
+                    # )
+                    # range_end_node.add_feature('orientation', "ancestor")
+
+                    leaf.add_feature("orientation", "descendant")
+                    leaf.add_feature('ancestral_range', clade.ancestral_range)
+                else:
+                    leaf.add_feature("orientation", orientation)
+                    leaf.add_feature('ancestral_range', clade.ancestral_range)
             # internal node
             else:
-                internal_node = parent_node.add_child(
-                    name=f"internal_{icount}",
-                    dist=10,
-                    # mean(branch_length_map.get(clade, [1])),
-                    support=10
-                    # split_support_map.get(split, 1.0),
-                )
+                if clade.ancestral_range and not clade.ancestral_range == parent_node.ancestral_range:
 
-                internal_node.add_feature("orientation", orientation)
-                internal_node.add_feature("ancestral_range",
+                    start_range_parent = parent_node.add_child(
+                        name=f"internal_{icount}",
+                        dist=6,
+                        support=10
+                    )
+                    start_range_parent.add_feature('orientation', orientation)
+                    start_range_parent.add_feature('ancestral_range', clade.ancestral_range)
+
+                    start_range_leaf = start_range_parent.add_child(
+                        name=clade.ancestral_range,
+                        dist=0.123,
+                        support=10,
+                    )
+                    start_range_leaf.add_feature('orientation', "ancestor")
+
+                    internal_node = start_range_parent.add_child(
+                        name=f"internal_{icount}",
+                        dist=23,
+                        support=10,
+                    )
+                    internal_node.add_feature('ancestral_range', clade.ancestral_range)
+                    internal_node.add_feature("orientation", "descendant")
+
+                    # internal_node = parent_node.add_child(
+                    #     name=f"internal_{icount}",
+                    #     dist=6,
+                    #     # mean(branch_length_map.get(clade, [1])),
+                    #     support=10
+                    #     # split_support_map.get(split, 1.0),
+                    # )
+                    #
+                    # # We have a range that is starting above this node
+                    # # todo not internal node but we need to make a new leaf with the range start
+                    # # todo also fix orientation here...
+                    # # print("todo")
+                    # range_start_node = internal_node.add_child(
+                    #     name=clade.ancestral_range,
+                    #     dist=0.3,  # todo short dist for debug
+                    #     support=4,
+                    # )
+                    # range_start_node.add_feature("orientation", "descendant")
+                    # range_start_node.add_feature("ancestral_range", "")
+                    # internal_node.add_feature("orientation", "ancestor")
+                    # internal_node.add_feature("ancestral_range",
+                    #                           clade.ancestral_range)
+
+                else:
+
+                    internal_node = parent_node.add_child(
+                        name=f"internal_{icount}",
+                        dist=7,
+                        # mean(branch_length_map.get(clade, [1])),
+                        support=10
+                        # split_support_map.get(split, 1.0),
+                    )
+
+                    internal_node.add_feature("orientation", orientation)
+                    internal_node.add_feature("ancestral_range",
                                           clade.ancestral_range)
 
-                # todo probably look at parent range too
-                if clade.ancestral_range in second_part_of_split.clade:
-                    # Range start
-                    internal_node.add_feature('ccd_info', 'rangeStart')
-                elif clade.ancestral_range == second_part_of_split.ancestral_range:
-                    internal_node.add_feature('ccd_info', 'bla')
-                else:
-                    internal_node.add_feature('ccd_info', 'notImplementedYet')
 
                 icount += 1
 
