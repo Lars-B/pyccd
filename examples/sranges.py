@@ -56,7 +56,7 @@ for clade in seen_resolved:
     print(out)
 
 nwk_map = map_tree.write(
-    format=5,
+    format=1,
     format_root_node=True,
     features=["orientation", "ancestral_range"]
 )
