@@ -23,7 +23,7 @@ trees, map = read_nexus_trees(test_tree_file, parse_taxon_map=True)
 
 from brokilon.ccd.domain.sranges import sranges
 
-clade_counts, clade_split_counts = sranges.get_sranges_map(trees, map)
+clade_counts, clade_split_counts, sranges_set, sampled_ancestors = sranges.get_sranges_map(trees, map)
 
 taxon_map = map
 
@@ -39,26 +39,28 @@ from ccd_vis import sranges_map_to_cytoscape_html
 
 sranges_map_to_cytoscape_html(clade_split_counts, reverse_taxon_map, clade_counts)
 
-# from networkx.drawing.nx_agraph import write_dot
-#
-# write_dot(G, "testing.dot")
-#
-# print("help me.")
+seen_resolved, map_tree = sranges.get_sranges_map_tree(
+        clade_counts,
+        clade_split_counts,
+        sranges_set,
+        sampled_ancestors,
+        taxon_map,
+        reverse_taxon_map
+)
 
-# map_tree = sranges.get_sranges_map_tree(
-#         clade_counts,
-#         clade_split_counts,
-#         taxon_map,
-#         reverse_taxon_map
-# )
-#
-# nwk_map = map_tree.write(
-#     format=5,
-#     format_root_node=True,
-#     features=["orientation", "ancestral_range", "ccd_info"]
-# )
-#
-# print(nwk_map)
+# for clade in seen_resolved:
+#     cur_c = str({reverse_taxon_map[c] for c in clade.clade})
+#     cur_range = reverse_taxon_map[clade.ancestral_range] if clade.ancestral_range is not None else "NR"
+#     out = f"{cur_c}_{cur_range}"
+#     print(out)
+
+nwk_map = map_tree.write(
+    format=5,
+    format_root_node=True,
+    features=["orientation", "ancestral_range", "ccd_info"]
+)
+
+print(nwk_map)
 
 # for i in range(len(trees)):
 #     clade_counts, clade_split_counts = sranges.get_sranges_map([trees[i]], map)
