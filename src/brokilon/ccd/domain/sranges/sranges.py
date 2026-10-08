@@ -553,14 +553,14 @@ def get_sranges_tree_from_seen_resolved_clades(
         sranges_set, sampled_ancestors
 ):
     # todo ignoring tie breaking for now...
-    # todo ignoring ranges at the moment...
 
     out_tree = Tree(
         support=100,
         dist=1.0,
         name="root"
     )
-    out_tree.add_feature("ancestral_range", root_clade.ancestral_range)
+    if root_clade.ancestral_range in sranges_set:
+        out_tree.add_feature("ancestral_range", root_clade.ancestral_range)
     out_tree.add_feature("orientation", "ancestor")
 
     icount = 1
@@ -855,21 +855,21 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 "descendant"
                             )
 
-                            internal_node = parent_node.add_child(
+                            internal_extra_node = parent_node.add_child(
                                 name=f"internal_extra_{icount}",
                                 dist=2.443
                             )
                             if hasattr(clade, 'ancestral_range'):
-                                internal_node.add_feature(
+                                internal_extra_node.add_feature(
                                     'ancestral_range',
                                     clade.ancestral_range
                                 )
-                            internal_node.add_feature(
+                            internal_extra_node.add_feature(
                                 'orientation',
                                 "ancestor"
                             )
 
-                            range_end_node = internal_node.add_child(
+                            range_end_node = internal_extra_node.add_child(
                                 name=clade.ancestral_range.replace(
                                     "_first",
                                     "_last"
@@ -878,13 +878,18 @@ def get_sranges_tree_from_seen_resolved_clades(
                             )
                             range_end_node.add_feature(
                                 'orientation',
-                                "descendant"
+                                "ancestor"
                             )
                             if hasattr(clade, 'ancestral_range'):
                                 range_end_node.ancestral_range = (
                                     clade.ancestral_range
                                 )
 
+                            internal_node = internal_extra_node.add_child(
+                                name=f"internal_{icount}",
+                                dist=1.4675
+                            )
+                            internal_node.add_feature("orientation", "descendant")
                         else:
                             if clade.ancestral_range in sranges_set:
                                 adjusted_parent_node, start_range_node = (
@@ -937,6 +942,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 )
 
                 else:
+                    # todo also some problem with this case i think
                     internal_node = parent_node.add_child(
                         name=f"internal_{icount}",
                         dist=7,
