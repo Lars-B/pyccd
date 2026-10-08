@@ -639,23 +639,24 @@ def get_sranges_tree_from_seen_resolved_clades(
                             # Case fully handled elsewhere
                             return
                         else:
-                            assert (
-                                    clade.ancestral_range
-                                    not in second_part_of_split.clade
-                            ), "Assuming SA"
-
-                            sampled_ancestor_node = parent_node.add_child(
-                                name=clade.ancestral_range,
-                                dist=0.1,
-                                support=2,
-                            )
-
-                            # TODO orientation should be ancestor and then
-                            #  descendant for the other half
-                            sampled_ancestor_node.add_feature(
-                                'orientation',
-                                orientation
-                            )
+                            # assert (
+                            #         clade.ancestral_range
+                            #         not in second_part_of_split.clade
+                            # ), "Assuming SA"
+                            #
+                            # sampled_ancestor_node = parent_node.add_child(
+                            #     name=clade.ancestral_range,
+                            #     dist=0.1,
+                            #     support=2,
+                            # )
+                            #
+                            # # TODO orientation should be ancestor and then
+                            # #  descendant for the other half
+                            # sampled_ancestor_node.add_feature(
+                            #     'orientation',
+                            #     orientation
+                            # )
+                            return
                             # sampled_ancestor_node.add_feature(
                             #     'ancestral_range',
                             #     'sampled_ancestor'
@@ -687,7 +688,17 @@ def get_sranges_tree_from_seen_resolved_clades(
                             dist=12,
                             support=1.0,
                         )
+                    elif (
+                            clade.ancestral_range in second_part_of_split.clade
+                            and getattr(parent_node, "ancestral_range", None) != clade.ancestral_range
+                    ):
+                        adjusted_parent_node, start_range_node = find_range_children(parent_node)
 
+                        leaf = adjusted_parent_node.add_child(
+                            name=label,
+                            dist=11.5,
+                            support=1.0,
+                        )
                     else:
                         leaf = parent_node.add_child(
                             name=label,
@@ -730,7 +741,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                         name=f"internal_extra_{icount}",
                         dist=3,
                     )
-                    if hasattr(clade, 'ancestral_range'):
+                    if getattr(clade, 'ancestral_range', None) in clade.clade:
                         extra_internal_node.add_feature(
                             'ancestral_range',
                             clade.ancestral_range
@@ -760,7 +771,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                     "orientation",
                     orientation
                 )
-                if hasattr(clade, 'ancestral_range'):
+                if next(iter(clade.clade)) == clade.ancestral_range:
                     leaf.add_feature(
                         'ancestral_range',
                         clade.ancestral_range
@@ -819,7 +830,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                             dist=23,
                             support=10,
                         )
-                        if hasattr(clade, 'ancestral_range'):
+                        if clade.ancestral_range in clade.clade:
                             internal_node.add_feature(
                                 'ancestral_range',
                                 clade.ancestral_range
@@ -936,11 +947,11 @@ def get_sranges_tree_from_seen_resolved_clades(
                         "orientation",
                         orientation
                     )
-                    # internal_node.add_feature(
-                    #     "ancestral_range",
-                    #     # clade.ancestral_range
-                    #     "None"
-                    # )
+                    if getattr(clade, "ancestral_range", None) in clade.clade:
+                        internal_node.add_feature(
+                            "ancestral_range",
+                            clade.ancestral_range
+                        )
 
                 icount += 1
 
