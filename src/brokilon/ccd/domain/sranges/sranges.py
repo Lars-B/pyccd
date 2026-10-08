@@ -834,8 +834,8 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 name=f"internal_extra_{icount}",
                                 dist=3,
                             )
-                            if getattr(clade, 'ancestral_range', None) in clade.clade:
-                                extra_internal_node.add_feature(
+                            # if getattr(clade, 'ancestral_range', None) in clade.clade:
+                            extra_internal_node.add_feature(
                                     'ancestral_range',
                                     clade.ancestral_range
                                 )
@@ -844,9 +844,11 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 "ancestor"
                             )
 
+                            # assuming the range here is always ontop of the leaf,
+                            # never actually a leaf itself, therefore dist 0.0
                             range_end = extra_internal_node.add_child(
                                 name=clade.ancestral_range.replace('_first', '_last'),
-                                dist=0.123,
+                                dist=0.0,
                             )
                             range_end.add_feature("orientation", "ancestor")
                             range_end.add_feature("ancestral_range", clade.ancestral_range)
@@ -854,7 +856,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                             if label in sranges_set:
                                 # have to add a leaf range
 
-                                range_start_parent = parent_node.add_child(
+                                range_start_parent = extra_internal_node.add_child(
                                     name=f"internal_leafrange",
                                     dist=1.90,
                                 )
@@ -874,9 +876,9 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 leaf.add_feature("ancestral_range", label)
 
                             else:
-                                leaf = parent_node.add_child(
+                                leaf = extra_internal_node.add_child(
                                     name=label,
-                                    dist=1.987,
+                                    dist=1.9823,
                                     support=1.0,
                                 )
                                 leaf.add_feature("orientation", "descendant")

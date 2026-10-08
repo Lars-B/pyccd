@@ -1,13 +1,13 @@
 from pathlib import Path
 
 
-test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
-                  f"/examples/data/sr_example.trees")
+# test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
+#                   f"/examples/data/sr_example.trees")
 # test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
 #                   f"/examples/data/sr_small.trees")
 
-# test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
-#                   f"/examples/data/toy_posterior.trees")
+test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
+                  f"/examples/data/sranges_toy_posterior.trees")
 
 # test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
 #                   f"/examples/data/rep_3_srfbd_first_ucln.trees")
