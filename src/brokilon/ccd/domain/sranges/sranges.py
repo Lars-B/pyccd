@@ -682,29 +682,100 @@ def get_sranges_tree_from_seen_resolved_clades(
                         adjusted_parent_node, start_range_node = (
                             find_range_children(parent_node)
                         )
+                        if label in sranges_set:
+                            # have to add a leaf range
 
-                        leaf = adjusted_parent_node.add_child(
-                            name=label,
-                            dist=12,
-                            support=1.0,
-                        )
+                            range_start_parent = adjusted_parent_node.add_child(
+                                name=f"internal_leafrange",
+                                dist=7.501,
+                            )
+                            range_start_parent.add_feature("orientation", orientation)
+
+                            range_start_leaf = range_start_parent.add_child(
+                                name=label,
+                                dist=0.157,
+                            )
+                            range_start_leaf.add_feature("orientation", "descendant")
+
+                            leaf = range_start_parent.add_child(
+                                name=label.replace("_first", "_last"),
+                                dist=1.145,
+                            )
+                            leaf.add_feature("orientation", "ancestor")
+                            leaf.add_feature("ancestral_range", label)
+
+                        else:
+                            leaf = adjusted_parent_node.add_child(
+                                name=label,
+                                dist=12,
+                                support=1.0,
+                            )
                     elif (
                             clade.ancestral_range in second_part_of_split.clade
-                            and getattr(parent_node, "ancestral_range", None) != clade.ancestral_range
+                            and getattr(parent_node, "ancestral_range",
+                                        None) != clade.ancestral_range
                     ):
                         adjusted_parent_node, start_range_node = find_range_children(parent_node)
 
-                        leaf = adjusted_parent_node.add_child(
-                            name=label,
-                            dist=11.5,
-                            support=1.0,
-                        )
+                        if label in sranges_set:
+                            # have to add a leaf range
+
+                            range_start_parent = adjusted_parent_node.add_child(
+                                name=f"internal_leafrange",
+                                dist=7.59,
+                            )
+                            range_start_parent.add_feature("orientation", orientation)
+
+                            range_start_leaf = range_start_parent.add_child(
+                                name=label,
+                                dist=0.145,
+                            )
+                            range_start_leaf.add_feature("orientation", "descendant")
+
+                            leaf = range_start_parent.add_child(
+                                name=label.replace("_first", "_last"),
+                                dist=1.34,
+                            )
+                            leaf.add_feature("orientation", "ancestor")
+                            leaf.add_feature("ancestral_range", label)
+
+                        else:
+
+                            leaf = adjusted_parent_node.add_child(
+                                name=label,
+                                dist=11.5,
+                                support=1.0,
+                            )
                     else:
-                        leaf = parent_node.add_child(
-                            name=label,
-                            dist=11,
-                            support=1.0,
-                        )
+
+                        if label in sranges_set:
+                            # have to add a leaf range
+
+                            range_start_parent = parent_node.add_child(
+                                name=f"internal_leafrange",
+                                dist=7.6,
+                            )
+                            range_start_parent.add_feature("orientation", orientation)
+
+                            range_start_leaf = range_start_parent.add_child(
+                                name=label,
+                                dist=0.124,
+                            )
+                            range_start_leaf.add_feature("orientation", "descendant")
+
+                            leaf = range_start_parent.add_child(
+                                name=label.replace("_first", "_last"),
+                                dist=1.12,
+                            )
+                            leaf.add_feature("orientation", "ancestor")
+                            leaf.add_feature("ancestral_range", label)
+
+                        else:
+                            leaf = parent_node.add_child(
+                                name=label,
+                                dist=11,
+                                support=1.0,
+                            )
 
                 elif (
                         clade.ancestral_range
@@ -713,49 +784,93 @@ def get_sranges_tree_from_seen_resolved_clades(
                         and getattr(parent_node, 'ancestral_range', None)
                         != getattr(clade, 'ancestral_range', None)
                 ):
-                    start_range_parent = parent_node.add_child(
-                        name=f"internal_{icount}",
-                        dist=10,
-                        support=1.0,
-                    )
-                    start_range_parent.add_feature(
-                        "orientation",
-                        orientation
-                    )
-                    # start_range_parent.add_feature(
-                    #     "ancestral_range",
-                    #     "None"
-                    # )
-
-                    range_start_node = start_range_parent.add_child(
-                        name=clade.ancestral_range,
-                        dist=2.4,
-                        support=1.4
-                    )
-                    range_start_node.add_feature(
-                        'orientation',
-                        "descendant"
-                    )
-
-                    extra_internal_node = start_range_parent.add_child(
-                        name=f"internal_extra_{icount}",
-                        dist=3,
-                    )
-                    if getattr(clade, 'ancestral_range', None) in clade.clade:
-                        extra_internal_node.add_feature(
-                            'ancestral_range',
-                            clade.ancestral_range
+                    if clade.ancestral_range not in clade.clade:
+                        # this case we are adding a leaf that has a range on top
+                        # todo this is not properly opening the range as it should....
+                        start_range_parent = parent_node.add_child(
+                            name=f"internal_{icount}",
+                            dist=10,
                         )
-                    extra_internal_node.add_feature(
-                        'orientation',
-                        "ancestor"
-                    )
+                        start_range_parent.add_feature(
+                            "orientation",
+                            orientation
+                        )
 
-                    leaf = extra_internal_node.add_child(
-                        name=label.replace('_first', '_last'),
-                        dist=1.98,
-                        support=1.98,
-                    )
+                        range_start_node = start_range_parent.add_child(
+                            name=clade.ancestral_range,
+                            dist=2.4,
+                            support=1.4
+                        )
+                        range_start_node.add_feature(
+                            'orientation',
+                            "descendant"
+                        )
+
+                        extra_internal_node = start_range_parent.add_child(
+                            name=f"internal_extra_{icount}",
+                            dist=3,
+                        )
+                        if getattr(clade, 'ancestral_range', None) in clade.clade:
+                            extra_internal_node.add_feature(
+                                'ancestral_range',
+                                clade.ancestral_range
+                            )
+                        extra_internal_node.add_feature(
+                            'orientation',
+                            "ancestor"
+                        )
+
+                        range_end = extra_internal_node.add_child(
+                            name=clade.ancestral_range.replace('_first', '_last'),
+                            dist=0.123,
+                        )
+                        range_end.add_feature("orientation", "ancestor")
+                        range_end.add_feature("ancestral_range", clade.ancestral_range)
+
+                        leaf = extra_internal_node.add_child(
+                            name=label,
+                            dist=1.98,
+                        )
+
+                    else:
+                        assert clade.ancestral_range in clade.clade, "would hope so..."
+                        start_range_parent = parent_node.add_child(
+                            name=f"internal_{icount}",
+                            dist=10,
+                        )
+                        start_range_parent.add_feature(
+                            "orientation",
+                            orientation
+                        )
+
+                        range_start_node = start_range_parent.add_child(
+                            name=clade.ancestral_range,
+                            dist=2.4,
+                            support=1.4
+                        )
+                        range_start_node.add_feature(
+                            'orientation',
+                            "descendant"
+                        )
+
+                        extra_internal_node = start_range_parent.add_child(
+                            name=f"internal_extra_{icount}",
+                            dist=3,
+                        )
+                        if getattr(clade, 'ancestral_range', None) in clade.clade:
+                            extra_internal_node.add_feature(
+                                'ancestral_range',
+                                clade.ancestral_range
+                            )
+                        extra_internal_node.add_feature(
+                            'orientation',
+                            "ancestor"
+                        )
+
+                        leaf = extra_internal_node.add_child(
+                            name=label.replace('_first', '_last'),
+                            dist=1.997,
+                        )
 
                 else:
                     if label in sranges_set:
@@ -764,7 +879,6 @@ def get_sranges_tree_from_seen_resolved_clades(
                     leaf = parent_node.add_child(
                         name=label,
                         dist=10,
-                        support=1.0,
                     )
 
                 leaf.add_feature(
@@ -789,7 +903,6 @@ def get_sranges_tree_from_seen_resolved_clades(
                         start_range_parent = parent_node.add_child(
                             name=f"internal_{icount}",
                             dist=6,
-                            support=10
                         )
                         start_range_parent.add_feature(
                             'orientation',
@@ -804,7 +917,6 @@ def get_sranges_tree_from_seen_resolved_clades(
                         start_range_leaf = start_range_parent.add_child(
                             name=clade.ancestral_range,
                             dist=0.123,
-                            support=10,
                         )
                         start_range_leaf.add_feature(
                             'orientation',
@@ -828,7 +940,6 @@ def get_sranges_tree_from_seen_resolved_clades(
                         internal_node = extra_internal_node.add_child(
                             name=f"internal_{icount}",
                             dist=23,
-                            support=10,
                         )
                         if clade.ancestral_range in clade.clade:
                             internal_node.add_feature(
@@ -892,9 +1003,13 @@ def get_sranges_tree_from_seen_resolved_clades(
                             internal_node.add_feature("orientation", "descendant")
                         else:
                             if clade.ancestral_range in sranges_set:
-                                adjusted_parent_node, start_range_node = (
-                                    find_range_children(parent_node)
-                                )
+
+                                try:
+                                    adjusted_parent_node, start_range_node = (
+                                        find_range_children(parent_node)
+                                    )
+                                except NotImplementedError:
+                                    print("wtf")
 
                                 internal_node = (
                                     adjusted_parent_node.add_child(
@@ -946,7 +1061,6 @@ def get_sranges_tree_from_seen_resolved_clades(
                     internal_node = parent_node.add_child(
                         name=f"internal_{icount}",
                         dist=7,
-                        support=10
                     )
 
                     internal_node.add_feature(
@@ -968,6 +1082,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                         internal_node,
                         child_split
                     )
+
         add_clade(node, cur_anc, "ancestor", cur_descendant)
         add_clade(node, cur_descendant, "descendant", cur_anc)
 

@@ -61,6 +61,8 @@ nwk_map = map_tree.write(
     features=["orientation", "ancestral_range"]
 )
 
+# parent_node.up.up.write(format=1, features=["orientation", "ancestral_range"])
+
 print(nwk_map)
 
 # for i in range(len(trees)):
