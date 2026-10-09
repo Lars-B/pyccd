@@ -1,6 +1,6 @@
 import inspect
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from brokilon.ccd.clades.sranges import SRangesClade
 from brokilon.core import Tree
@@ -15,7 +15,7 @@ def get_callsite():
 class AncestralSplit:
     ancestor: SRangesClade
     descendant: SRangesClade
-    source: str = field(default_factory=get_callsite)
+    # source: str = field(default_factory=get_callsite)
 
 
 def prelabel_tree(tree, taxon_map):
@@ -116,7 +116,32 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
             # We can ignore all leafs that are 0.0, i.e. internal leafs that encode a non leaf...
             if node.is_leaf():
                 if node.dist == 0.0:
-                    continue
+                    if getattr(node.up, "rangetype", None) == "leaf_range":
+                        cur_range = None
+                        if hasattr(node.up.up, "range"):
+                            cur_range = f"{node.up.up.range}_first"
+                        elif hasattr(node.up, "rangetype"):
+                            if node.up.rangetype == "sampled_ancestor":
+                                raise NotImplementedError("this might be necessary to do...")
+                        current_leaf_range_start_clade = SRangesClade(
+                            frozenset({f"{node.up.range}_first"}), cur_range)
+
+                        clade_count_map[current_leaf_range_start_clade] += 1
+
+                        current_split = AncestralSplit(
+                            ancestor=SRangesClade(
+                                frozenset({}),
+                                f"{node.up.range}_first"
+                            ),
+                            descendant=SRangesClade(
+                                frozenset({f"{node.up.range}_first"}),
+                                f"{node.up.range}_first"
+                            )
+                        )
+                        clade_split_count_map[current_leaf_range_start_clade][
+                            current_split] += 1
+                    else:
+                        continue
                 if hasattr(node, "rangetype"):
                     if node.rangetype == "range_end":
                         if hasattr(node.up, "rangetype"):
@@ -836,9 +861,9 @@ def get_sranges_tree_from_seen_resolved_clades(
                             )
                             # if getattr(clade, 'ancestral_range', None) in clade.clade:
                             extra_internal_node.add_feature(
-                                    'ancestral_range',
-                                    clade.ancestral_range
-                                )
+                                'ancestral_range',
+                                clade.ancestral_range
+                            )
                             extra_internal_node.add_feature(
                                 'orientation',
                                 "ancestor"

@@ -11,4 +11,4 @@ def get_callsite():
 @dataclass(frozen=True)
 class SRangesClade(BaseClade):
     ancestral_range: str
-    source: str = field(default_factory=get_callsite, compare=False)
+    # source: str = field(default_factory=get_callsite, compare=False)
