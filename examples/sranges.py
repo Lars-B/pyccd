@@ -37,6 +37,11 @@ from graph_generation import sranges_map_to_networkx
 
 from ccd_vis import sranges_map_to_cytoscape_html
 
+# todo next steps to get this going:
+#  - improve visualization with probabilities on edges
+#  - need to make sure that we are getting the
+#    right maps of clades and splits....
+
 sranges_map_to_cytoscape_html(clade_split_counts, reverse_taxon_map, clade_counts)
 
 seen_resolved, map_tree = sranges.get_sranges_map_tree(

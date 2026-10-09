@@ -481,6 +481,8 @@ def get_sranges_map_tree(
     leaf_clades = []
     for current_clade in sorted(clade_count_map.keys(), key=len):
         if len(current_clade) == 1:
+            # todo this is not correct anymore, if there is a range
+            #  then these ranges are counted twice ish
             leaf_clades.append(current_clade)
             continue
         elif len(current_clade) == 0:
@@ -492,6 +494,7 @@ def get_sranges_map_tree(
             # anc_prob, desc_prob = 0, 0
 
             if len(current_split.ancestor.clade) == 1:
+                # todo this needs to be corrected
                 leaf_observations = sum(
                     [clade_count_map[k] for k in leaf_clades if
                      k.clade == current_split.ancestor.clade]
@@ -507,6 +510,7 @@ def get_sranges_map_tree(
                 anc_prob = seen_resolved_clades[current_split.ancestor][0]
 
             if len(current_split.descendant.clade) == 1:
+                # todo this needs to be corrected
                 leaf_observations = sum(
                     [clade_count_map[k] for k in leaf_clades if
                      k.clade == current_split.descendant.clade]
