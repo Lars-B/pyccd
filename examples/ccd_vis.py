@@ -1,9 +1,11 @@
 import json
 
 
+FONT_SIZE = 30
+
 def label_width(text, char_px=8, padding=2, min_w=30):
     # computes width for nodes
-    return max(min_w, len(text) * char_px + padding)
+    return max(min_w, int(len(text) * FONT_SIZE * 0.8 + padding))
 
 
 def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_map,
@@ -187,7 +189,7 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
               'border-width':2,
               'label':'data(id)',
               'color':'#000000',
-              'font-size':10,
+              'font-size':{FONT_SIZE},
               'text-valign':'center',
                 'text-halign':'center',
                 'text-wrap':'wrap',
@@ -208,7 +210,7 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
                 'arrow-scale':2.0,
                 'target-arrow-color':'#64bf64',
                 'label':'data(count)',
-                'font-size':10,
+                'font-size':{FONT_SIZE},
                 'color':'#000000'
             }}}},
             {{selector:'edge[?to_split]',style:{{
@@ -221,10 +223,11 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
           ],
           layout: {{
                 name: 'breadthfirst',
+                fit: 'true',
                 directed: true,
-                padding: 100,
-                spacingFactor: 2.5,
-                avoidOverlap: 0.8,
+                padding: 10,
+                spacingFactor: 0.8,
+                avoidOverlap: 1.2,
                 pack: true,
                 roots: function(node) {{
                   return node.data('depth') === 0;
