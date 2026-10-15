@@ -45,8 +45,8 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
     visited_clade_ids = set()
     valid_edges = []
     split_nodes = []
-    node_depths = {}  # clade_id → depth integer
-    # seen_edge_pairs = set()
+    seen_split_ids = set()
+    child_edge_map = {}
 
     def add_clade_recursive(clade):
 
@@ -59,7 +59,6 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
             return
 
         visited_clade_ids.add(clade_id)
-        node_depths[clade_id] = len(clade)  # Track depth HERE
 
         # Register this clade
         all_clades[clade_id] = clade
@@ -67,7 +66,7 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
         # Get splits for this clade
         splits_dict = sranges_map.get(clade, {})
 
-        for split_index, (split, support) in enumerate(splits_dict.items()):
+        for split, split_count in splits_dict.items():
             anc_clade = split.ancestor
             desc_clade = split.descendant
 
@@ -79,36 +78,34 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
             if desc_id not in all_clades:
                 all_clades[desc_id] = desc_clade
 
-            # A separate split node for this split of this clade
-            split_id = f"s_{clade_id}_{split_index}"
-
+            # One shared split node per unique (ancestor, descendant) pair
+            split_id = f"split|{anc_id}|{desc_id}"
             split_label = f"{anc_id} || {desc_id}"
-            split_nodes.append({
-                'id': split_id,
-                'label': split_label,
-                'is_split': True,
-                'width': label_width(split_label)
-            })
 
-            # Parent clade -> split: annotation belongs here
+            if split_id not in seen_split_ids:
+                seen_split_ids.add(split_id)
+                split_nodes.append({
+                    'id': split_id,
+                    'label': split_label,
+                    'is_split': True,
+                    'width': label_width(split_label)
+                })
+
+            # Parent clade -> split: one edge per parent, annotation is per-parent
             valid_edges.append({
                 'source': str(clade_id),
                 'target': split_id,
                 'to_split': True,
-                'ccd_prob': f"{sranges_map[clade][split]} / {clade_count_map[clade]}"
+                'ccd_prob': f"{split_count} / {clade_count_map[clade]}"
             })
 
-            # Split -> child clades: no annotations
-            valid_edges.append({
-                'source': split_id,
-                'target': str(anc_id),
-                'count': sranges_map[clade][split],
-            })
-            valid_edges.append({
-                'source': split_id,
-                'target': str(desc_id),
-                'count': sranges_map[clade][split],
-            })
+            # Split -> child clades: one edge per (split, child), counts summed
+            for target in {str(anc_id), str(desc_id)}:
+                edge = child_edge_map.setdefault(
+                    (split_id, target),
+                    {'source': split_id, 'target': target, 'count': 0}
+                )
+                edge['count'] += split_count
 
             if anc_clade in sranges_map:
                 add_clade_recursive(anc_clade)
@@ -118,6 +115,9 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
     # Process all root clades
     for clade in sranges_map.keys():
         add_clade_recursive(clade)
+
+    # Add the merged split -> child edges once everything has been counted
+    valid_edges.extend(child_edge_map.values())
 
     # === Now build edges (existing code) ===
 

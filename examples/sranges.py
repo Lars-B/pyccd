@@ -19,8 +19,15 @@ from brokilon.core import read_nexus_trees
 
 trees, map = read_nexus_trees(test_tree_file, parse_taxon_map=True)
 
-# trees = trees[:10]
+# subset for debugging
+# single range birth
+# trees = trees[11:12]
+# stacked ranges case
+# trees = trees[26:27]
 
+# trees = trees[6:7]
+
+print(f"Looking at {len(trees)} many trees.")
 from brokilon.ccd.domain.sranges import sranges
 
 clade_counts, clade_split_counts, sranges_set, sampled_ancestors = sranges.get_sranges_map(trees, map)
