@@ -128,12 +128,14 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
 
                         clade_count_map[current_leaf_range_start_clade] += 1
 
+                        # handle the empty clade as the descendant out of the range
+                        # to indicate the start of the range
                         current_split = AncestralSplit(
-                            ancestor=SRangesClade(
+                            descendant=SRangesClade(
                                 frozenset({}),
                                 f"{node.up.range}_first"
                             ),
-                            descendant=SRangesClade(
+                            ancestor=SRangesClade(
                                 frozenset({f"{node.up.range}_first"}),
                                 f"{node.up.range}_first"
                             )
