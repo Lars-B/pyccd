@@ -363,40 +363,48 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                             frozenset(parent_clade_set),
                             parent_range
                         )
-                        clade_count_map[parent_clade] += 1
+                        # here we are closing a range so we only need to count the split
+                        # todo to be removed:
+                        #  clade_count_map[parent_clade] += 1
                         clade_split_count_map[parent_clade][current_split] += 1
                     case "leaf_range":
+                        # todo this seems to be counting leaf ranges twice with the new version
+                        #  hence it will likely be removed...
+
                         # We are looking at a node that is parent of a range that is a leaf
                         # We don't need to add a split here?
                         # We only count the clade, which is the taxon and itself as a range?
 
-                        # todo fix this to something less messy...
-                        current_leaf = [l.name for l in node if l.dist == 0.0][
-                            0]
-                        range_taxon = reverse_taxon_map[f"{node.range}_first"]
-
-                        # todo what is this assert doing?
-                        assert range_taxon == int(current_leaf), \
-                            (f"Failure: {range_taxon} != {current_leaf}")
-
-                        # Leaf ranges can not have themselves as a range,
-                        # but there can be other ranges as ancestors above
-                        # Leaf ranges have no ancestral range of themselves because
-                        # otherwise this information is assumed to be present above the leaf
-                        # and therefore breaks the logic
-                        # One way to avoid this and fully encode leaf ranges is
-                        # to have _first and _last taxon as part of the clades...
-                        current_range = None
-                        if hasattr(node.up, "range"):
-                            current_range = f"{node.up.range}_first"
-                        elif hasattr(node.up, "sampledancestor"):
-                            current_range = f"{node.up.sampledancestor}_first"
-                        clade_count_map[
-                            SRangesClade(
-                                frozenset({taxon_map[int(current_leaf)]}),
-                                current_range
-                            )
-                        ] += 1
+                        # # todo fix this to something less messy...
+                        # current_leaf = [l.name for l in node if l.dist == 0.0][
+                        #     0]
+                        # range_taxon = reverse_taxon_map[f"{node.range}_first"]
+                        #
+                        # # todo what is this assert doing?
+                        # assert range_taxon == int(current_leaf), \
+                        #     (f"Failure: {range_taxon} != {current_leaf}")
+                        #
+                        # # Leaf ranges can not have themselves as a range,
+                        # # but there can be other ranges as ancestors above
+                        # # Leaf ranges have no ancestral range of themselves because
+                        # # otherwise this information is assumed to be present above the leaf
+                        # # and therefore breaks the logic
+                        # # One way to avoid this and fully encode leaf ranges is
+                        # # to have _first and _last taxon as part of the clades...
+                        # current_range = None
+                        # if hasattr(node.up, "range"):
+                        #     current_range = f"{node.up.range}_first"
+                        # elif hasattr(node.up, "sampledancestor"):
+                        #     current_range = f"{node.up.sampledancestor}_first"
+                        #
+                        # # todo this is adding E - Arange
+                        # clade_count_map[
+                        #     SRangesClade(
+                        #         frozenset({taxon_map[int(current_leaf)]}),
+                        #         current_range
+                        #     )
+                        # ] += 1
+                        continue
                     case _:
                         raise ValueError("Unsupported value...")
 
@@ -420,7 +428,9 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                     "Something is wrong with the clades..."
                 cur_range = None
                 parent_range = None
+                range_birth = False
                 if hasattr(node, "range"):
+                    range_birth = True
                     cur_range = f"{node.range}_first"
                 if node.up:
                     if hasattr(node.up, "rangetype"):
@@ -459,8 +469,12 @@ def get_sranges_map(trees, taxon_map, ccd_type=1):
                         descendant=SRangesClade(frozenset(child0_clade_set),
                                                 cur_range),
                     )
-
-                clade_count_map[parent_clade] += 1
+                if range_birth and getattr(node.up, "rangetype", "nothing") == "range_start":
+                    # this parent clade was already added with the start range and does not
+                    # need to be counted again (double count issue)
+                    print(f"first range birth in range, no clade count added..")
+                else:
+                    clade_count_map[parent_clade] += 1
                 clade_split_count_map[parent_clade][current_split] += 1
 
     return (
