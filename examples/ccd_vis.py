@@ -1,8 +1,13 @@
 import json
 
 
+def label_width(text, char_px=8, padding=2, min_w=30):
+    # computes width for nodes
+    return max(min_w, len(text) * char_px + padding)
+
+
 def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_map,
-                                  output_file='sranges-ccd-vis.html'):
+                                  output_file='sranges-ccd-vis.html', use_reverse_taxon_map=True):
     """
     Minimal, validated Cytoscape HTML generator.
     sranges_map: Dict[SRangesClade, Dict[AncestralSplit, int]]
@@ -13,38 +18,37 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
 
     def clade_to_node_id(clade):
         """Generate stable ID even for empty frozensets."""
-        nonlocal reverse_taxon_map
+
+        def taxon_label(t):
+            if use_reverse_taxon_map:
+                return str(reverse_taxon_map[t])
+            return str(t).replace("_first", "")
+
         # Case 1: Has taxa - use sorted taxa + range
-        range_id = str(
-            reverse_taxon_map[clade.ancestral_range]) if clade.ancestral_range else 'NR'
+        range_id = taxon_label(clade.ancestral_range) if clade.ancestral_range else '∅'
         if clade.clade:
-            taxa = tuple(sorted(clade.clade))
-            # base_hash = hash(taxa)
-            clade_string = str({reverse_taxon_map[t] for t in taxa})
+            taxa = sorted(clade.clade)
+            clade_string = '{' + ', '.join(sorted(taxon_label(t) for t in taxa)) + '}'
         # Case 2: Empty frozenset (special/range node) - use object id + range
         else:
-            # Use object id as fallback for uniqueness
-            obj_id = id(clade)
-            # base_hash = obj_id
-            clade_string = obj_id
+            clade_string = '∅'
 
         # Combine into stable ID
-        clean_id = f"c_{clade_string}_{range_id}".replace(
+        clean_id = f"{clade_string}, {range_id}".replace(
             '"', '').replace('\n', '').strip()
-
-        # Final safety: ensure non-empty ID
-        # if not clean_id or len(clean_id) < 5:
-        #     clean_id = f"clade_special_{}"
 
         return str(clean_id)
 
     # === PHASE 2: Traverse, collect edges AND track depths ===
     visited_clade_ids = set()
     valid_edges = []
+    split_nodes = []
     node_depths = {}  # clade_id → depth integer
-    seen_edge_pairs = set()
+    # seen_edge_pairs = set()
 
     def add_clade_recursive(clade):
+
+        nonlocal sranges_map, clade_count_map
 
         clade_id = clade_to_node_id(clade)
 
@@ -61,40 +65,49 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
         # Get splits for this clade
         splits_dict = sranges_map.get(clade, {})
 
-        for split, support in splits_dict.items():
+        for split_index, (split, support) in enumerate(splits_dict.items()):
             anc_clade = split.ancestor
             desc_clade = split.descendant
 
             anc_id = clade_to_node_id(anc_clade)
             desc_id = clade_to_node_id(desc_clade)
 
-            # Validate
             if anc_id not in all_clades:
                 all_clades[anc_id] = anc_clade
             if desc_id not in all_clades:
                 all_clades[desc_id] = desc_clade
 
-            # Create edges - VALIDATE SOURCE/TARGET
-            if anc_id and desc_id and clade_id:
-                e1 = (clade_id, anc_id)
-                e2 = (clade_id, desc_id)
+            # A separate split node for this split of this clade
+            split_id = f"s_{clade_id}_{split_index}"
 
-                if e1 not in seen_edge_pairs:
-                    seen_edge_pairs.add(e1)
-                    valid_edges.append({
-                        'source': str(clade_id),
-                        'target': str(anc_id),
-                        'weight': int(support),
-                    })
-                if e2 not in seen_edge_pairs:
-                    seen_edge_pairs.add(e2)
-                    valid_edges.append({
-                        'source': str(clade_id),
-                        'target': str(desc_id),
-                        'weight': int(support),
-                    })
+            split_label = f"{anc_id} || {desc_id}"
+            split_nodes.append({
+                'id': split_id,
+                'label': split_label,
+                'is_split': True,
+                'width': label_width(split_label)
+            })
 
-            # Recurse with incremented depth
+            # Parent clade -> split: annotation belongs here
+            valid_edges.append({
+                'source': str(clade_id),
+                'target': split_id,
+                'to_split': True,
+                'ccd_prob': f"{sranges_map[clade][split]} / {clade_count_map[clade]}"
+            })
+
+            # Split -> child clades: no annotations
+            valid_edges.append({
+                'source': split_id,
+                'target': str(anc_id),
+                'count': sranges_map[clade][split],
+            })
+            valid_edges.append({
+                'source': split_id,
+                'target': str(desc_id),
+                'count': sranges_map[clade][split],
+            })
+
             if anc_clade in sranges_map:
                 add_clade_recursive(anc_clade)
             if desc_clade in sranges_map:
@@ -111,14 +124,15 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
     for clade_id, clade in all_clades.items():
         is_terminal = len(clade.clade) == 1 if clade.clade else False
         num_resolutions = len(sranges_map.get(clade, {}))
-
+        clade_label = str(len(clade.clade)) if clade.clade else '0'
         nodes.append({
             'id': str(clade_id),
-            'label': str(len(clade.clade)) if clade.clade else '0',
-            'terminal': bool(is_terminal),
+            'label': clade_label,
+            'width': label_width(clade_id),
             'num_resolutions': int(num_resolutions),
             'freq': clade_count_map.get(clade, -1),
         })
+    nodes.extend(split_nodes)
 
     print(f"Built graph: {len(nodes)} nodes, {len(valid_edges)} edges, {len(all_clades)} clades")
 
@@ -167,32 +181,38 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
           elements: elements,
           style: [
             {{selector:'node',style:{{
-              'background-color':'#6d4aff',
+            'shape': 'round-rectangle',
+              'background-color':'#b8c7ff',
               'border-color':'#ffffff',
               'border-width':2,
               'label':'data(id)',
               'color':'#000000',
               'font-size':10,
               'text-valign':'center',
-              'text-halign':'center',
-              'width':'mapData(num_resolutions, 0, 20, 35, 80)',
-              'height':'mapData(num_resolutions, 0, 20, 35, 80)',
+                'text-halign':'center',
+                'text-wrap':'wrap',
+                'text-max-width':'data(width)',
+                'width': 'data(width)',
+                'height': '30',
             }}}},
-            {{selector:'node[terminal=true]',style:{{
-              'background-color':'#ff9999'
-            }}}},
-            {{selector:'node.matched',style:{{
-              'background-color':'#ffd700',
-              'border-color':'#ff8800',
-              'border-width':4
+            {{selector:'node[?is_split]',style:{{
+                'shape':'rectangle',
+                'background-color':'#a8e6a1',
+                'label':'data(label)',
             }}}},
             {{selector:'edge',style:{{
-              'line-color':'#64bf64',
-              'width':4,
-              'curve-style': 'bezier',
-              'target-arrow-shape':'triangle',
-              'arrow-scale': 2.0,
-              'target-arrow-color': '#64bf64'
+                'line-color':'#64bf64',
+                'width':4,
+                'curve-style':'bezier',
+                'target-arrow-shape':'triangle',
+                'arrow-scale':2.0,
+                'target-arrow-color':'#64bf64',
+                'label':'data(count)',
+                'font-size':10,
+                'color':'#000000'
+            }}}},
+            {{selector:'edge[?to_split]',style:{{
+                'label':'data(ccd_prob)',
             }}}},
             {{selector:':selected',style:{{
               'border-color':'#ffd700',
