@@ -494,15 +494,9 @@ def get_sranges_map_tree(
         taxon_map, reverse_taxon_map
 ):
     seen_resolved_clades = {}
-    leaf_clades = []
     for current_clade in sorted(clade_count_map.keys(), key=len):
-        if len(current_clade) == 1:
-            # todo this is not correct anymore, if there is a range
-            #  then these ranges are counted twice ish
-            leaf_clades.append(current_clade)
-            continue
-        elif len(current_clade) == 0:
-            # this is splitting off a range or SA
+        if len(current_clade) < 2:
+            # leaf clades or SA/range specific clades to skip
             continue
 
         for current_split in clade_split_count_map[current_clade]:
@@ -510,32 +504,16 @@ def get_sranges_map_tree(
             # anc_prob, desc_prob = 0, 0
 
             if len(current_split.ancestor.clade) == 1:
-                # todo this needs to be corrected
-                leaf_observations = sum(
-                    [clade_count_map[k] for k in leaf_clades if
-                     k.clade == current_split.ancestor.clade]
-                )
-
-                anc_prob = clade_count_map[
-                               current_split.ancestor] / leaf_observations
-                assert 0 <= anc_prob <= 1.0, "Prob failure1..."
+                anc_prob = 1
             elif len(current_split.ancestor.clade) == 0:
                 anc_prob = 1
             else:
-                # [c for c in seen_resolved_clades if c.clade == current_split.ancestor.clade], current_split.ancestor, seen_resolved_clades[current_split.ancestor]
+                # [c for c in seen_resolved_clades if c.clade == current_split.ancestor.clade],
+                # current_split.ancestor, seen_resolved_clades[current_split.ancestor]
                 anc_prob = seen_resolved_clades[current_split.ancestor][0]
 
             if len(current_split.descendant.clade) == 1:
-                # todo this needs to be corrected
-                leaf_observations = sum(
-                    [clade_count_map[k] for k in leaf_clades if
-                     k.clade == current_split.descendant.clade]
-                )
-
-                # current_split.descendant, [k for k in clade_count_map if k.clade == current_split.descendant.clade]
-                desc_prob = clade_count_map[
-                                current_split.descendant] / leaf_observations
-                assert 0 <= desc_prob <= 1.0, "Prob failure2..."
+                desc_prob = 1
             elif not current_split.descendant.clade:
                 desc_prob = 1
             else:
@@ -548,10 +526,12 @@ def get_sranges_map_tree(
 
             if current_clade in seen_resolved_clades:
                 if seen_resolved_clades[current_clade][0] < split_probability:
-                    seen_resolved_clades[current_clade] = (split_probability,
-                                                           current_split, False)
-                elif seen_resolved_clades[current_clade][
-                    0] == split_probability:
+                    print(
+                        f"DEBUG[SRB]: {current_clade} is being set to {current_split} "
+                        f"with probability {split_probability}"
+                    )
+                    seen_resolved_clades[current_clade] = (split_probability, current_split, False)
+                elif seen_resolved_clades[current_clade][0] == split_probability:
                     # Tie breaking randomly, either keep the old or pick the new
                     import random
                     if random.random() < 0.5:
@@ -560,12 +540,18 @@ def get_sranges_map_tree(
                         chosen_prob, chosen_split = seen_resolved_clades[
                             current_clade][:2]
 
+                    print(
+                        f"DEBUG[SRB]: {current_clade} is being set to {current_split} "
+                        f"with probability {split_probability}"
+                    )
                     # resolving tiebreak in the seen_resolved_clades, True indicates the tiebreak
-                    seen_resolved_clades[current_clade] = (chosen_prob,
-                                                           chosen_split, True)
+                    seen_resolved_clades[current_clade] = (chosen_prob, chosen_split, True)
             else:
-                seen_resolved_clades[current_clade] = (split_probability,
-                                                       current_split, False)
+                print(
+                    f"DEBUG[SRB]: {current_clade} is being set to {current_split} "
+                    f"with probability {split_probability}"
+                )
+                seen_resolved_clades[current_clade] = (split_probability, current_split, False)
     # End of seen_resolved_clades construction
 
     # output = {}
@@ -581,6 +567,7 @@ def get_sranges_map_tree(
         raise NotImplementedError(
             "Currently no tie breaking support for multiple roots")
     else:
+        print(f"DEBUG[root]: {seen_resolved_clades[best_roots[0]]}")
         root = best_roots[0]
 
     map_tree = get_sranges_tree_from_seen_resolved_clades(
@@ -613,6 +600,8 @@ def get_sranges_tree_from_seen_resolved_clades(
     def recursive_sranges_children(node, split):
         nonlocal icount, seen_resolved_clades
         nonlocal sranges_set
+
+        print(f"DEBUG: {split} is being added")
 
         cur_anc = split.ancestor
         cur_descendant = split.descendant
@@ -1182,6 +1171,10 @@ def get_sranges_tree_from_seen_resolved_clades(
 
                 # Recurse if this clade was resolved.
                 if clade in seen_resolved_clades:
+
+                    for s in seen_resolved_clades[clade]:
+                        print(f"DEBUG[all splits]: {s}")
+
                     child_split = seen_resolved_clades[clade][1]
                     recursive_sranges_children(
                         internal_node,
