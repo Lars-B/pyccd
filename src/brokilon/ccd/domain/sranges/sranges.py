@@ -99,8 +99,10 @@ def prelabel_tree(tree, taxon_map):
                 continue
     if len(opened_ranges) != len(closed_ranges):
         raise ValueError("This is not possible and a bug is found.")
-    print(
-        f"Tree has {len(sampled_ancestors)} SAs and {len(opened_ranges)} ranges.")
+    if DEBUG_TREE:
+        print(
+            f"Tree has {len(sampled_ancestors)} SAs and {len(opened_ranges)} ranges."
+        )
     # returning set of all taxa that are a range and all that are SA
     return opened_ranges, sampled_ancestors
 

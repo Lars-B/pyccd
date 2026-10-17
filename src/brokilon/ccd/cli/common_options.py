@@ -9,7 +9,7 @@ def common_options(func):
         "--trees-file",
         required=True,
         type=click.Path(exists=True, dir_okay=False),
-        help="Path to the tree file",
+        help="Path to the input tree file",
     )(func)
     func = click.option(
         "--ccd-type",
