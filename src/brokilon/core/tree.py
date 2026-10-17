@@ -515,7 +515,7 @@ class TreeNode(object):
 
     def write(self, features=None, outfile=None, format=0, is_leaf_fn=None,
               format_root_node=False, dist_formatter=None, support_formatter=None,
-              name_formatter=None, quoted_node_names=False):
+              name_formatter=None, quoted_node_names=False, icytree_order=False):
         """
         Returns the newick representation of current node. Several
         arguments control the way in which extra data is shown for
@@ -547,6 +547,9 @@ class TreeNode(object):
 
         """
 
+        if icytree_order:
+            self._order_for_icytree()
+
         nw = write_newick(self, features=features, format=format,
                           is_leaf_fn=is_leaf_fn,
                           format_root_node=format_root_node,
@@ -561,6 +564,13 @@ class TreeNode(object):
         else:
             return nw
 
+    def _order_for_icytree(self):
+        for node in self.traverse("postorder"):
+            node.children.sort(
+                key=lambda child: (
+                        getattr(child, "orientation", None) != "ancestor"
+                )
+            )
 
 def extract_edge_set(t, attr_t):
     t_content = t.get_cached_content()
