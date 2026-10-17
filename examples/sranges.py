@@ -42,7 +42,7 @@ from graph_generation import sranges_map_to_networkx
 
 # G = sranges_map_to_networkx(clade_split_counts)
 
-from ccd_vis import sranges_map_to_cytoscape_html
+from brokilon.ccd.domain.sranges.sranges_ccd_graph_visualizer import sranges_map_to_cytoscape_html
 
 sranges_map_to_cytoscape_html(
     clade_split_counts, reverse_taxon_map, clade_counts,
@@ -51,31 +51,22 @@ sranges_map_to_cytoscape_html(
 
 print(f"The following are ranges:\n{sranges_set}")
 
-# seen_resolved, map_tree = sranges.get_sranges_map_tree(
-#         clade_counts,
-#         clade_split_counts,
-#         sranges_set,
-#         sampled_ancestors,
-#         taxon_map,
-#         reverse_taxon_map
-# )
-#
-# print(f"length of seen resolved: {len(seen_resolved.keys())}")
-# for clade in seen_resolved:
-#     cur_c = str({reverse_taxon_map[c] for c in clade.clade})
-#     cur_range = reverse_taxon_map[clade.ancestral_range] if clade.ancestral_range is not None else "NR"
-#     out = f"{cur_c}_{cur_range}"
-#     print(out)
-#
-# nwk_map = map_tree.write(
-#     format=1,
-#     format_root_node=True,
-#     features=["orientation", "ancestral_range"]
-# )
+sranges.DEBUG_TREE = False
 
-# parent_node.up.up.write(format=1, features=["orientation", "ancestral_range"])
+seen_resolved, map_tree = sranges.get_sranges_map_tree(
+        clade_counts,
+        clade_split_counts,
+        sranges_set,
+        sampled_ancestors
+)
 
-# print(nwk_map)
+nwk_map = map_tree.write(
+    format=1,
+    format_root_node=True,
+    features=["orientation", "ancestral_range"],
+    icytree_order=True
+)
+print(nwk_map)
 
 # for i in range(len(trees)):
 #     clade_counts, clade_split_counts = sranges.get_sranges_map([trees[i]], map)
