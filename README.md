@@ -9,7 +9,7 @@ Implemented versions are:
 - phylogeography CCD1 (assuming fixed leaf labels)
 - transmission tree CCD0 and CCD1 using BREATH like trees
 
-Currently in development:
+Currently, under testing:
 - SRanges implementation for sampled ancestors and fossil ranges
 
 # Usage
@@ -17,7 +17,7 @@ Currently in development:
 > [!Caution]
 > If you want to use a specific functionality but can not find documentation please let me know.
 
-## Phylogeography MAP tree
+## Phylogeography CCD-MAP tree
 
 The commandline tool for phylogeography trees is called `geography` and you can use the help to
 learn more about the input options.
@@ -25,7 +25,7 @@ learn more about the input options.
 geography --help
 ```
 
-## tCCD MAP tree
+## Transmission CCD-MAP tree
 
 This package provide a command line interface to compute the tCCD MAP tree.
 The tool is called `transcope` and for more information install the package and run
@@ -33,14 +33,33 @@ The tool is called `transcope` and for more information install the package and 
 transcope --help
 ```
 
-## Regular CCD MAP
+## Stratigraphic-range CCD-MAP tree
+
+The command-line tool for computing stratigraphic-range CCD-MAP trees is called `fossirange`.
+Use the help command to learn more about the available input options.
+
+```bash
+fossirange --help
+```
+
+### Visualizing the stratigraphic-range CCD graph
+
+The command-line tool `fossigraph` generates an interactive Cytoscape visualization of the stratigraphic-range CCD graph as an HTML file.
+
+Use the help command to learn more about the available input options.
+
+```bash
+fossigraph --help
+```
+
+## Regular CCD-MAP tree
 
 These can be computed with the tool `ccdMAP`, use `--help` to find out how to use it.
 
 ## Majority rule consensus tree
 
 Use the tool `mrc` to compute a majority rule consensus tree.
-This is available for different verions of extended trees, see help.
+This is available for different versions of extended trees, see help.
 
 ## Breath helper infection date extraction
 

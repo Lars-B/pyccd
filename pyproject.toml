@@ -1,10 +1,10 @@
 [project]
 name = "brokilon"
-version = "0.2.0"
+version = "0.3.0"
 authors = [
   { name="Lars Berling", email="berlinglars96@gmail.com" },
 ]
-description = "A python package for phylogenetics, variations of conditional cladedistributions"
+description = "A python package for phylogenetics, variations of conditional clade distributions (CCDs)"
 readme = "README.md"
 license = "LGPL-3.0-or-later"
 requires-python = ">=3.10"
