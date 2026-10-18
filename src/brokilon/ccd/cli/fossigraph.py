@@ -1,8 +1,11 @@
-import click
+"""Generate an interactive Cytoscape HTML visualization of the stratigraphic-range CCD graph."""
+
 from pathlib import Path
 
-from brokilon.core import read_nexus_trees
+import click
+
 from brokilon.ccd.domain.sranges import sranges, sranges_ccd_graph_visualizer
+from brokilon.core import read_nexus_trees
 
 
 @click.command()

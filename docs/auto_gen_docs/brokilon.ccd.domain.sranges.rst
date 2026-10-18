@@ -8,6 +8,7 @@ Submodules
    :maxdepth: 4
 
    brokilon.ccd.domain.sranges.sranges
+   brokilon.ccd.domain.sranges.sranges_ccd_graph_visualizer
 
 Module contents
 ---------------

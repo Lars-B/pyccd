@@ -7,7 +7,7 @@ All of these are automatically generated from the code, so if there are missing 
 Feel free to raise an issue if you found a problem/typo or just want something documented that is currently not there.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 4
    :caption: API Reference
 
-   auto_gen_docs/brokilon
+   auto_gen_docs/modules

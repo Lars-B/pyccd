@@ -1,10 +1,12 @@
+"""Compute the stratigraphic-range CCD-MAP tree from a collection of phylogenetic trees."""
+
 import sys
 
 import click
 
-from brokilon.core import read_nexus_trees
-from brokilon.ccd.domain.sranges import sranges
 from brokilon.ccd.cli.common_options import common_options
+from brokilon.ccd.domain.sranges import sranges
+from brokilon.core import read_nexus_trees
 
 
 @click.command()

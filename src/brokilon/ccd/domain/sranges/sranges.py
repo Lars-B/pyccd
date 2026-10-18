@@ -1,3 +1,10 @@
+"""
+Utilities for stratigraphic-range CCDs.
+
+Provides data structures and algorithms for representing stratigraphic-range
+clades, constructing stratigraphic-range CCDs from phylogenetic trees, and
+CCD-MAP trees.
+"""
 import inspect
 from collections import defaultdict
 from dataclasses import dataclass
@@ -5,23 +12,44 @@ from dataclasses import dataclass
 from brokilon.ccd.clades.sranges import SRangesClade
 from brokilon.core import Tree
 
-
 DEBUG_TREE = False
 
 
 def get_callsite():
+    """
+    Get the source location of the caller's caller (for debugging not in use at the moment).
+
+    Returns:
+        A string containing the filename, line number, and function name.
+    """
     frame = inspect.stack()[2]  # caller of caller
     return f"{frame.filename}:{frame.lineno} ({frame.function})"
 
 
 @dataclass(frozen=True)
 class AncestralSplit:
+    """
+    Represent an ancestral split in a stratigraphic-range CCD with orientation.
+
+    Attributes:
+        ancestor: The ancestral stratigraphic-range clade.
+        descendant: The descendant stratigraphic-range clade.
+    """
     ancestor: SRangesClade
     descendant: SRangesClade
     # source: str = field(default_factory=get_callsite)
 
 
 def prelabel_tree(tree, taxon_map):
+    """
+    A function to prelabel a stratigraphic-range tree with differnt attributes.
+    These attributes are node features called rangetype and sampledancestor to indicate whether the
+    node is part of a range or displays a SA etc.
+
+    :param tree: a stratigraphic-range tree
+    :param taxon_map: the taxon map
+    :return: opened_ranges, sampled_ancestors lists for both the ranges that were opened and the SAs
+    """
     opened_ranges = set({})
     closed_ranges = set({})
     sampled_ancestors = set({})
@@ -34,7 +62,7 @@ def prelabel_tree(tree, taxon_map):
     for leaf in tree:
         current_taxon = taxon_map[int(leaf.name)]
         if leaf.dist == 0.0:
-            # non regular leaf
+            # non-regular leaf
             if current_taxon.endswith("_first"):
                 other_leaves = [taxon_map[int(t.name)] for t in leaf.up if
                                 t is not leaf]
@@ -107,7 +135,28 @@ def prelabel_tree(tree, taxon_map):
     return opened_ranges, sampled_ancestors
 
 
-def get_sranges_map(trees, taxon_map, ccd_type=1):
+def get_sranges_map(trees, taxon_map):
+    """Construct a stratigraphic-range CCD from phylogenetic trees.
+
+    Processes the input trees to identify stratigraphic-range clades, ancestral
+    splits, and sampled ancestors, and aggregates their counts to construct a
+    stratigraphic-range CCD.
+
+    :param trees: Collection of stratigraphic-range trees used to construct
+        the CCD.
+    :param taxon_map: Mapping between taxon labels and integer identifiers
+        from the Nexus file.
+    :return: A tuple containing the following four objects:
+
+        - ``clade_count_map``: Dictionary mapping stratigraphic-range clades
+          to their observed counts.
+        - ``clade_split_count_map``: Nested dictionary mapping ancestral
+          stratigraphic-range clades to their splits and observed counts.
+        - ``sranges_set``: Set of stratigraphic ranges identified during
+          processing.
+        - ``sampled_ancestors``: Set of sampled ancestors identified in the
+          trees.
+    """
     clade_count_map = defaultdict(int)
     clade_split_count_map = defaultdict(lambda: defaultdict(int))
 
@@ -495,6 +544,30 @@ def get_sranges_map_tree(
         clade_split_count_map,
         sranges_set, sampled_ancestors
 ):
+    """Construct the stratigraphic-range CCD-MAP tree.
+
+    Resolves clades in order of increasing size using their observed counts
+    and ancestral split counts. The resolved clades are then used in a
+    dynamic programming algorithm to construct the MAP tree, incorporating
+    stratigraphic ranges and sampled ancestors.
+
+    Args:
+        clade_count_map: Dictionary mapping stratigraphic-range clades to
+            their observed counts.
+        clade_split_count_map: Nested dictionary mapping ancestral clades to
+            their ancestral splits and corresponding counts.
+        sranges_set: Set of stratigraphic ranges identified during CCD
+            construction.
+        sampled_ancestors: Set of sampled ancestors identified during CCD
+            construction.
+
+    Returns:
+        A tuple containing:
+
+        - `seen_resolved_clades`: Dictionary of clades resolved during MAP
+          tree construction, primarily for debugging.
+        - `map_tree`: The resulting stratigraphic-range CCD-MAP tree.
+    """
     seen_resolved_clades = {}
     for current_clade in sorted(clade_count_map.keys(), key=len):
         if len(current_clade) < 2:
@@ -590,6 +663,23 @@ def get_sranges_tree_from_seen_resolved_clades(
         root_clade,
         sranges_set, sampled_ancestors
 ):
+    """Construct a stratigraphic-range tree from resolved clades.
+
+    Recursively builds a tree from the clades and ancestral splits resolved
+    during MAP tree construction. Adds internal nodes, stratigraphic-range
+    nodes, and sampled ancestors where appropriate, preserving their
+    ancestral-descendant relationships and orientation annotations.
+
+    :param seen_resolved_clades: Mapping of clades and their resolved ancestral
+        splits used to construct the tree.
+    :param root_clade: Root clade of the stratigraphic-range CCD-MAP tree.
+    :param sranges_set: Set of stratigraphic ranges identified during CCD
+        construction.
+    :param sampled_ancestors: Set of sampled ancestors identified during CCD
+        construction.
+    :return: The constructed tree, including its stratigraphic-range and
+        orientation annotations.
+    """
     # todo ignoring tie breaking for now...
 
     out_tree = Tree(
@@ -603,6 +693,12 @@ def get_sranges_tree_from_seen_resolved_clades(
     icount = 1
 
     def recursive_sranges_children(node, split):
+        """
+        Recursively add the descendant clades of an ancestral split.
+
+        Processes the ancestral and descendant clades of a split and adds their
+        corresponding nodes and relationships to the output tree.
+        """
         nonlocal icount, seen_resolved_clades
         nonlocal sranges_set
 
@@ -617,6 +713,12 @@ def get_sranges_tree_from_seen_resolved_clades(
             cur_descendant = split.ancestor
 
         def add_clade(parent_node, clade, orientation, second_part_of_split):
+            """
+            Add a clade and its associated nodes to the output tree.
+
+            Adds the clade beneath the specified parent node, handling its orientation,
+            position within the split, and associated stratigraphic-range nodes.
+            """
             nonlocal icount, seen_resolved_clades
             nonlocal sranges_set
 
@@ -744,7 +846,7 @@ def get_sranges_tree_from_seen_resolved_clades(
 
                             leaf = range_start_parent.add_child(
                                 name=label.replace("_first", "_last"),
-                                dist=1.34  if DEBUG_TREE else 1,
+                                dist=1.34 if DEBUG_TREE else 1,
                             )
                             leaf.add_feature("orientation", "ancestor")
                             leaf.add_feature("ancestral_range", label)
@@ -822,7 +924,7 @@ def get_sranges_tree_from_seen_resolved_clades(
 
                                 range_start_leaf = range_start_parent.add_child(
                                     name=label,
-                                    dist=0.1354  if DEBUG_TREE else 0,
+                                    dist=0.1354 if DEBUG_TREE else 0,
                                 )
                                 range_start_leaf.add_feature("orientation", "descendant")
 
@@ -860,7 +962,8 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 dist=3 if DEBUG_TREE else 1,
                             )
                             # if getattr(clade, 'ancestral_range', None) in clade.clade:
-                            extra_internal_node.add_feature('ancestral_range', clade.ancestral_range)
+                            extra_internal_node.add_feature('ancestral_range',
+                                                            clade.ancestral_range)
                             extra_internal_node.add_feature('orientation', "ancestor")
 
                             # assuming the range here is always ontop of the leaf,

@@ -10,6 +10,8 @@ Submodules
    brokilon.ccd.cli.breath_helper
    brokilon.ccd.cli.ccd_map_cli
    brokilon.ccd.cli.common_options
+   brokilon.ccd.cli.fossigraph
+   brokilon.ccd.cli.fossirange
    brokilon.ccd.cli.geography
    brokilon.ccd.cli.transcope
 

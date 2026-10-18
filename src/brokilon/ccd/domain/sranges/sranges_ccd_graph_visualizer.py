@@ -1,18 +1,40 @@
 import json
 
-
 FONT_SIZE = 30
 
+
 def label_width(text, char_px=8, padding=2, min_w=30):
-    # computes width for nodes
+    """Estimate the minimum width required to display a node label inside the node.
+
+    Args:
+        text: The label text.
+        char_px: Approximate pixel width per character (currently unused).
+        padding: Additional horizontal padding in pixels.
+        min_w: Minimum node width in pixels.
+
+    Returns:
+        The estimated label width in pixels.
+    """
     return max(min_w, int(len(text) * FONT_SIZE * 0.8 + padding))
 
 
 def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_map,
                                   output_file='sranges-ccd-vis.html', use_reverse_taxon_map=True):
-    """
-    Minimal, validated Cytoscape HTML generator.
-    sranges_map: Dict[SRangesClade, Dict[AncestralSplit, int]]
+    """Generate an interactive Cytoscape HTML visualization of the stratigraphic-range CCD graph.
+
+    Args:
+        sranges_map: Mapping from stratigraphic-range clades (SRangesClade) to
+            mappings of ancestral splits (AncestralSplit) and their counts.
+        reverse_taxon_map: Mapping from internal taxon identifiers to their
+            original taxon labels.
+        clade_count_map: Mapping from stratigraphic-range clades to their counts.
+        output_file: Path where the generated HTML visualization is saved.
+            Defaults to 'sranges-ccd-vis.html'.
+        use_reverse_taxon_map: Whether to use the reverse taxon map to display
+            original taxon labels instead of internal identifiers. Defaults to True.
+
+    Returns:
+        None. Writes the interactive Cytoscape visualization to an HTML file.
     """
 
     # === PHASE 1: Collect unique clades ===
