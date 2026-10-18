@@ -82,6 +82,14 @@ Install the latest version directly from Github:
 pip install brokilon@git+https://github.com/Lars-B/pyccd.git
 ```
 
+## From a release
+
+Alternatively, download the `.whl` file from the [latest GitHub release](https://github.com/Lars-B/pyccd/releases/latest) and install it using:
+
+```bash
+pip install /path/to/brokilon-<version>-py3-none-any.whl
+```
+
 ---
 
 ## Development install
