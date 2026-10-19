@@ -371,6 +371,8 @@ def transmission_tree_from_dict_of_splits(tree_dict, root_clade, blockcount_map,
         name="root"
     )
     output_tree.add_feature(block, -1)
+    output_tree.add_feature("transm_ancest", root_clade.transm_ancest)
+
     icount = 1
 
     def recursive_children(node, split):
@@ -386,6 +388,7 @@ def transmission_tree_from_dict_of_splits(tree_dict, root_clade, blockcount_map,
                     dist=np.mean(branch_lengths_map[clade]),
                     support=1.0  # todo: maybe add ccd support....
                 )
+                leaf.add_feature("transm_ancest", clade.transm_ancest)
 
                 if clade.transm_ancest == "Unknown":
                     leaf.add_feature(block, median_sample(blockcount_map[clade]))
@@ -401,6 +404,7 @@ def transmission_tree_from_dict_of_splits(tree_dict, root_clade, blockcount_map,
                     support=1.0  # todo: maybe add ccd support....
                 )
                 icount += 1
+                internal_node.add_feature("transm_ancest", clade.transm_ancest)
 
                 if clade.transm_ancest == "Unknown":
                     if clade in blockcount_map:

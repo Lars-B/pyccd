@@ -43,11 +43,6 @@ def phylgeo_example():
     print(beast_ccd1_tree.write(format=5, features=["type"],
                                 format_root_node=True))
 
-    # todo can I reimplement the function to get all represented trees from a CCD?
-    # todo implement the sample form the CCD function....
-    from brokilon.ccd.domain.phylogeography import get_all_trees_represented
-    all_trees_represented = get_all_trees_represented(geo_ccd_map)
-
 
 def breath_example(basic=False):
     trees_path = (
@@ -103,7 +98,46 @@ def breath_example(basic=False):
     )
 
 
+def extended_rf_testing():
+
+    # BREATH example:
+    basic = False
+
+    trees_path = (
+        "data/basic_motivating_example_breath.trees" if basic else
+        "data/motivating_example_breath.trees"
+    )
+    posterior = read_breath_nexus(
+        os.path.join(
+            Path(__file__).parent.absolute(),
+            trees_path
+        ),
+        parse_taxon_map=False
+    )
+
+    from brokilon.metrics import extended_robinson_foulds
+
+    # todo try with wrong thing to throw correct errors
+
+    rf = extended_robinson_foulds(posterior[0], posterior[1], kind="transmission")
+    print(f"Transmisison: {rf}")
+
+    # Phylogeography example:
+    posterior = read_nexus_trees(
+        os.path.join(
+            Path(__file__).parent.absolute(),
+            "data/motivating_example.trees"
+        )
+    )
+
+    # todo try with wrong thing to throw correct errors
+
+    rf = extended_robinson_foulds(posterior[0], posterior[4], kind="deme")
+    print(f"DEME: {rf}")
+
+
 if __name__ == '__main__':
     # phylgeo_example()
-    breath_example()
+    # breath_example()
     # breath_example(basic=True)
+    extended_rf_testing()
