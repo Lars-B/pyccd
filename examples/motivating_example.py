@@ -117,7 +117,22 @@ def extended_rf_testing():
 
     from brokilon.metrics import extended_robinson_foulds
 
-    # todo try with wrong thing to throw correct errors
+    try:
+        wrong = extended_robinson_foulds(
+            posterior[0], posterior[1], kind="transmission", annotation_str="deme"
+        )
+    except ValueError as e:
+        if "No nodes in the tree have the annotation" not in str(e):
+            raise
+
+    try:
+        wrong = extended_robinson_foulds(
+            posterior[0], posterior[1], kind="deme", annotation_str="deme"
+        )
+    except ValueError as e:
+        if "Double check whether" not in str(e):
+            raise
+        pass
 
     rf = extended_robinson_foulds(posterior[0], posterior[1], kind="transmission")
     print(f"Transmisison: {rf}")
@@ -130,7 +145,20 @@ def extended_rf_testing():
         )
     )
 
-    # todo try with wrong thing to throw correct errors
+    try:
+        wrong = extended_robinson_foulds(posterior[0], posterior[4], kind="transmission")
+    except ValueError as e:
+        if "No nodes in the tree have" not in str(e):
+            raise
+        pass
+    try:
+        wrong = extended_robinson_foulds(
+            posterior[0], posterior[4], kind="deme", annotation_str="deme"
+        )
+    except ValueError as e:
+        if "Double check whether" not in str(e):
+            raise
+        pass
 
     rf = extended_robinson_foulds(posterior[0], posterior[4], kind="deme")
     print(f"DEME: {rf}")

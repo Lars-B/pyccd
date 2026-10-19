@@ -16,8 +16,10 @@ def _get_deme_clades(tree, annotation_str):
                     types = [x for x in
                              getattr(node, f"{annotation_str}_set").strip("[]\"\'").split(",")]
                 except Exception:
-                    raise ValueError("Something is wrong with the tree file, likely inconsistent "
-                                     "labels from treeannotator which is infuriatingly stupid!")
+                    raise ValueError(f"Something is wrong with the tree file, likely inconsistent "
+                                     f"labels from treeannotator which is infuriatingly stupid! "
+                                     f"Double check whether your tree contains the"
+                                     f" {annotation_str!r} attributes at nodes.")
 
                 cur_clade = {int(leaf.name) for leaf in node}
                 # this is a bypass, if there is no attribute of the required annotation it will
@@ -44,6 +46,11 @@ def _get_transmission_clades(tree, annotation_str):
             frozenset(cur_clade),
             deme=_sanitize_transm_ancest(getattr(node, annotation_str, "Missing"))
         ))
+
+    if all(clade.deme == "Missing" for clade in clades):
+        raise ValueError(
+            f"No nodes in the tree have the annotation {annotation_str!r}"
+        )
 
     return clades
 
