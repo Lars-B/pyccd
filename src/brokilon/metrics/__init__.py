@@ -1,2 +1,2 @@
-from brokilon.metrics.generalized_robinson_foulds import extended_robinson_foulds
+from brokilon.metrics.extended_robinson_foulds import extended_robinson_foulds
 from brokilon.metrics.robinson_foulds import robinson_foulds_ccd, robinson_foulds
