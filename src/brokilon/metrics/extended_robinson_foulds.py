@@ -55,30 +55,54 @@ def _get_transmission_clades(tree, annotation_str):
     return clades
 
 
-def _get_sranges_clades(tree, annotation_str):
-    raise NotImplementedError
+def _get_sranges_clades(tree, taxon_map):
+
+    from brokilon.ccd.domain.sranges import sranges
+    # todo using deep copy because of messy prelabel things happening at the moment (not a fix)
+    from copy import deepcopy
+
+    clades, clade_splits, _, _ = sranges.get_sranges_map([deepcopy(tree)], taxon_map)
+
+    clades = False
+    if clades:
+        return set(clades.keys())
+    else:
+        return set(clade_splits.keys())
 
 
 def extended_robinson_foulds(
-        tree_t1, tree_t2, kind="deme", annotation_str=None
+        tree_t1, tree_t2, kind="deme", annotation_str=None, taxon_map=None
 ):
-    # Clade extractor methods and their default annotation string
-    extractors = {
-        "deme": (_get_deme_clades, "type"),
-        "transmission": (_get_transmission_clades, "transm_ancest"),
-        "sranges": (_get_sranges_clades, None),
-    }
+    match kind:
+        case "deme":
+            annotation_str = (
+                annotation_str if annotation_str is not None else "type"
+            )
+            clades1 = _get_deme_clades(tree_t1, annotation_str=annotation_str)
+            clades2 = _get_deme_clades(tree_t2, annotation_str=annotation_str)
 
-    try:
-        extractor, default_annotation = extractors[kind]
-    except KeyError:
-        raise ValueError(f"Unknown RF distance kind: {kind!r}") from None
+        case "transmission":
+            annotation_str = (
+                annotation_str if annotation_str is not None else "transm_ancest"
+            )
+            clades1 = _get_transmission_clades(tree_t1, annotation_str=annotation_str)
+            clades2 = _get_transmission_clades(tree_t2, annotation_str=annotation_str)
 
-    if annotation_str is None:
-        annotation_str = default_annotation
+        case "sranges":
+            if taxon_map is None:
+                raise ValueError("'taxon_map' is required for kind='sranges'")
 
-    clades1 = extractor(tree_t1, annotation_str=annotation_str)
-    clades2 = extractor(tree_t2, annotation_str=annotation_str)
+            clades1 = _get_sranges_clades(
+                tree_t1, taxon_map=taxon_map
+            )
+            clades2 = _get_sranges_clades(
+                tree_t2, taxon_map=taxon_map
+            )
+
+            print(f"{len(clades1)} -- {len(clades2)}")
+
+        case _:
+            raise ValueError(f"Unknown RF distance kind: {kind!r}")
 
     return len(clades1.symmetric_difference(clades2))
 

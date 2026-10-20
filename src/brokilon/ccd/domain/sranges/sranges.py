@@ -160,7 +160,7 @@ def get_sranges_map(trees, taxon_map):
     clade_count_map = defaultdict(int)
     clade_split_count_map = defaultdict(lambda: defaultdict(int))
 
-    reverse_taxon_map = {value: key for key, value in taxon_map.items()}
+    # reverse_taxon_map = {value: key for key, value in taxon_map.items()}
 
     # for node in (node for t in trees for node in t.traverse("levelorder")):
     for t in trees:
