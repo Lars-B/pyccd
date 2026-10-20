@@ -63,11 +63,12 @@ def _get_sranges_clades(tree, taxon_map):
 
     clades, clade_splits, _, _ = sranges.get_sranges_map([deepcopy(tree)], taxon_map)
 
-    clades = False
-    if clades:
+    use_clades = True
+    if use_clades:
         return set(clades.keys())
     else:
-        return set(clade_splits.keys())
+        assert all(len(k) == 1 for k in clade_splits.values()), "Wrong assumption..."
+        return {next(iter(k)) for k in clade_splits.values()}
 
 
 def extended_robinson_foulds(
@@ -99,7 +100,14 @@ def extended_robinson_foulds(
                 tree_t2, taxon_map=taxon_map
             )
 
+            print("---------------------------------")
             print(f"{len(clades1)} -- {len(clades2)}")
+            for c in clades1:
+                print(c)
+            print("---------------------------------")
+            for c in clades2:
+                print(c)
+            print("---------------------------------")
 
         case _:
             raise ValueError(f"Unknown RF distance kind: {kind!r}")
