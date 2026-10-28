@@ -55,7 +55,7 @@ def _get_transmission_clades(tree, annotation_str):
     return clades
 
 
-def _get_sranges_clades(tree, taxon_map):
+def _get_sranges_clades(tree, taxon_map, use_clades=True):
 
     from brokilon.ccd.domain.sranges import sranges
     # todo using deep copy because of messy prelabel things happening at the moment (not a fix)
@@ -63,7 +63,6 @@ def _get_sranges_clades(tree, taxon_map):
 
     clades, clade_splits, _, _ = sranges.get_sranges_map([deepcopy(tree)], taxon_map)
 
-    use_clades = True
     if use_clades:
         return set(clades.keys())
     else:
@@ -72,7 +71,7 @@ def _get_sranges_clades(tree, taxon_map):
 
 
 def extended_robinson_foulds(
-        tree_t1, tree_t2, kind="deme", annotation_str=None, taxon_map=None
+        tree_t1, tree_t2, kind="deme", annotation_str=None, taxon_map=None, use_clades=True
 ):
     match kind:
         case "deme":
@@ -94,20 +93,11 @@ def extended_robinson_foulds(
                 raise ValueError("'taxon_map' is required for kind='sranges'")
 
             clades1 = _get_sranges_clades(
-                tree_t1, taxon_map=taxon_map
+                tree_t1, taxon_map=taxon_map, use_clades=use_clades
             )
             clades2 = _get_sranges_clades(
-                tree_t2, taxon_map=taxon_map
+                tree_t2, taxon_map=taxon_map, use_clades=use_clades
             )
-
-            print("---------------------------------")
-            print(f"{len(clades1)} -- {len(clades2)}")
-            for c in clades1:
-                print(c)
-            print("---------------------------------")
-            for c in clades2:
-                print(c)
-            print("---------------------------------")
 
         case _:
             raise ValueError(f"Unknown RF distance kind: {kind!r}")
