@@ -391,6 +391,7 @@ def get_sranges_map(trees, taxon_map):
                                 f"Failure: range end should have "
                                 f"single taxon leaf set which is the range...")
                         parent_range = None
+                        parent_clade_should_be_counted = True
                         if node.up:
                             if hasattr(node.up, "rangetype"):
                                 match node.up.rangetype:
@@ -403,6 +404,10 @@ def get_sranges_map(trees, taxon_map):
                                             "This needs fixing"
                                         parent_range = f"{node.up.sampledancestor}_first"
                                     case "range_start":
+                                        # We don't need to count this parent
+                                        # it was counted already at the start of this range
+                                        # and nothing happend inside the range
+                                        parent_clade_should_be_counted = False
                                         assert node.up.range == node.range, \
                                             "something wrong with node.up.up case"
                                         if hasattr(node.up.up, "range"):
@@ -419,9 +424,14 @@ def get_sranges_map(trees, taxon_map):
                             frozenset(parent_clade_set),
                             parent_range
                         )
-                        # here we are closing a range so we only need to count the split
-                        # todo to be removed:
-                        #  clade_count_map[parent_clade] += 1
+                        # here we are closing a range so we need to count the split
+                        # if the parent is also the start of the range we don't count it
+                        # otherwise the parent is not also the start of the range, i.e.
+                        # something else happens inside the range (range-birth) and the parent clade
+                        # needs to be counted
+                        if parent_clade_should_be_counted:
+                            clade_count_map[parent_clade] += 1
+
                         clade_split_count_map[parent_clade][current_split] += 1
                     case "leaf_range":
                         # todo this seems to be counting leaf ranges twice with the new version
@@ -943,6 +953,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 leaf.add_feature("orientation", "descendant")
 
                         else:
+                            # todo fix this, why is the assert now wrong, is it because the bugfix?
                             assert clade.ancestral_range in sranges_set, "should be the case"
                             # this case we are adding a leaf that has a range on top
                             start_range_parent = parent_node.add_child(
