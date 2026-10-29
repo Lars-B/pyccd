@@ -545,14 +545,14 @@ def get_sranges_map(trees, taxon_map):
     return (
         dict(clade_count_map),
         {clade: dict(splits) for clade, splits in clade_split_count_map.items()},
-        sranges_set, sampled_ancestors
+        sranges_set
     )
 
 
 def get_sranges_map_tree(
         clade_count_map,
         clade_split_count_map,
-        sranges_set, sampled_ancestors
+        sranges_set
 ):
     """Construct the stratigraphic-range CCD-MAP tree.
 
@@ -567,8 +567,6 @@ def get_sranges_map_tree(
         clade_split_count_map: Nested dictionary mapping ancestral clades to
             their ancestral splits and corresponding counts.
         sranges_set: Set of stratigraphic ranges identified during CCD
-            construction.
-        sampled_ancestors: Set of sampled ancestors identified during CCD
             construction.
 
     Returns:
@@ -662,7 +660,7 @@ def get_sranges_map_tree(
     map_tree = get_sranges_tree_from_seen_resolved_clades(
         seen_resolved_clades,
         root,
-        sranges_set, sampled_ancestors
+        sranges_set
     )
     #
     return seen_resolved_clades, map_tree
@@ -671,7 +669,7 @@ def get_sranges_map_tree(
 def get_sranges_tree_from_seen_resolved_clades(
         seen_resolved_clades,
         root_clade,
-        sranges_set, sampled_ancestors
+        sranges_set
 ):
     """Construct a stratigraphic-range tree from resolved clades.
 
@@ -684,8 +682,6 @@ def get_sranges_tree_from_seen_resolved_clades(
         splits used to construct the tree.
     :param root_clade: Root clade of the stratigraphic-range CCD-MAP tree.
     :param sranges_set: Set of stratigraphic ranges identified during CCD
-        construction.
-    :param sampled_ancestors: Set of sampled ancestors identified during CCD
         construction.
     :return: The constructed tree, including its stratigraphic-range and
         orientation annotations.
@@ -907,8 +903,9 @@ def get_sranges_tree_from_seen_resolved_clades(
                         != getattr(clade, 'ancestral_range', None)
                 ):
                     if clade.ancestral_range not in clade.clade:
-                        if clade.ancestral_range in sampled_ancestors:
-                            # this case we are adding a leaf that has a range on top
+                        # if clade.ancestral_range in sampled_ancestors:
+                        if clade.ancestral_range not in sranges_set:
+                            # this means the range is a SA
                             sa_parent = parent_node.add_child(
                                 name=f"internal_{icount}",
                                 dist=1.8 if DEBUG_TREE else 1,
@@ -953,7 +950,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 leaf.add_feature("orientation", "descendant")
 
                         else:
-                            # todo fix this, why is the assert now wrong, is it because the bugfix?
+                            # This assert is probably redundant with the if statement above...
                             assert clade.ancestral_range in sranges_set, "should be the case"
                             # this case we are adding a leaf that has a range on top
                             start_range_parent = parent_node.add_child(
