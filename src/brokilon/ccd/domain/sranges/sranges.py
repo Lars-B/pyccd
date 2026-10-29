@@ -1068,7 +1068,7 @@ def get_sranges_tree_from_seen_resolved_clades(
 
                         leaf_range_end = start_range_parent.add_child(
                             name=label.replace('_first', '_last'),
-                            dist=4.24 if DEBUG_TREE else 0,
+                            dist=4.24 if DEBUG_TREE else 1,
                         )
                         leaf_range_end.add_feature("orientation", "ancestor")
                         leaf_range_end.add_feature("ancestral_range", clade.ancestral_range)
