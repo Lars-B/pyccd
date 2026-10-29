@@ -1,4 +1,12 @@
+import os
+
 import click
+
+
+def _must_not_exist(ctx, param, value):
+    if value is not None and os.path.exists(value):
+        raise click.ClickException(f"Output file '{value}' already exists.")
+    return value
 
 
 def common_options(func):
@@ -31,6 +39,7 @@ def common_options(func):
         "--output-file",
         type=click.Path(writable=True, dir_okay=False),
         default=None,
+        callback=_must_not_exist,
         help="Path to save the CCD-MAP tree"
     )(func)
     func = click.option(
