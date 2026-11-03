@@ -6,6 +6,7 @@ import click
 
 from brokilon.ccd.domain.sranges import sranges, sranges_ccd_graph_visualizer
 from brokilon.core import read_nexus_trees
+from brokilon.ccd.cli.common_options import _must_not_exist, common_options
 
 
 @click.command()
@@ -27,6 +28,7 @@ from brokilon.core import read_nexus_trees
     type=click.Path(dir_okay=False, writable=True),
     default="sranges-ccd-vis.html",
     show_default=True,
+    callback=_must_not_exist,
     help="Path for the output HTML visualization.",
 )
 @click.option(
@@ -69,7 +71,7 @@ def main(trees_file, burn_in, output_file, reverse_taxon_map, verbose):
     if verbose:
         click.echo(f"After burn-in: {len(trees)} trees.", err=True)
 
-    clade_counts, clade_split_counts, sranges_set, sampled_ancestors = (
+    clade_counts, clade_split_counts, sranges_set = (
         sranges.get_sranges_map(trees, taxon_map)
     )
 
