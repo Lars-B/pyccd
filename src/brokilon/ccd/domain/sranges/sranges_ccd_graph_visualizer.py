@@ -169,6 +169,8 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
     <meta charset="UTF-8">
     <title>SRanges CCD</title>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
     <style>
     #cy{{width:100vw;height:100vh;background-color:#e5e5e5;}}
     #controls{{position:absolute;top:10px;left:10px;background:#333;color:#fff;padding:10px;border-radius:5px;font-family:monospace;z-index:999;max-width:300px;}}
@@ -244,18 +246,14 @@ def sranges_map_to_cytoscape_html(sranges_map, reverse_taxon_map, clade_count_ma
             }}}}
           ],
           layout: {{
-                name: 'breadthfirst',
-                fit: 'true',
-                directed: true,
-                padding: 10,
-                spacingFactor: 0.8,
-                avoidOverlap: 1.2,
-                pack: true,
-                roots: function(node) {{
-                  return node.data('depth') === 0;
-                }}
+                name: 'dagre',
+                rankDir: 'TB',
+                nodeSep: 10,
+                rankSep: 40,
+                fit: true,
+                padding: 10
             }},
-          minZoom:0.1,
+          minZoom:0.001,
           maxZoom:3
         }});
 
