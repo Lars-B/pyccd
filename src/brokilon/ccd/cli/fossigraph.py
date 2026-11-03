@@ -71,7 +71,7 @@ def main(trees_file, burn_in, output_file, reverse_taxon_map, verbose):
     if verbose:
         click.echo(f"After burn-in: {len(trees)} trees.", err=True)
 
-    clade_counts, clade_split_counts, sranges_set = (
+    clade_counts, clade_split_counts, sranges_set, branch_length_map = (
         sranges.get_sranges_map(trees, taxon_map)
     )
 

@@ -51,7 +51,7 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose, debug):
     if verbose:
         print(f"After burn-in: {len(trees)} trees.", file=sys.stderr)
 
-    clade_counts, clade_split_counts, sranges_set = (
+    clade_counts, clade_split_counts, sranges_set, branch_length_map = (
         sranges.get_sranges_map(trees, taxon_map)
     )
 
