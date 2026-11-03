@@ -8,6 +8,7 @@ CCD-MAP trees.
 import inspect
 from collections import defaultdict
 from dataclasses import dataclass
+from statistics import mean
 
 from brokilon.ccd.clades.sranges import SRangesClade
 from brokilon.core import Tree
@@ -159,6 +160,7 @@ def get_sranges_map(trees, taxon_map):
     """
     clade_count_map = defaultdict(int)
     clade_split_count_map = defaultdict(lambda: defaultdict(int))
+    branch_length_map = defaultdict(list)
 
     # reverse_taxon_map = {value: key for key, value in taxon_map.items()}
 
@@ -178,9 +180,16 @@ def get_sranges_map(trees, taxon_map):
                             if node.up.rangetype == "sampled_ancestor":
                                 raise NotImplementedError("this might be necessary to do...")
                         current_leaf_range_start_clade = SRangesClade(
-                            frozenset({f"{node.up.range}_first"}), cur_range)
+                            frozenset({f"{node.up.range}_first"}), cur_range
+                        )
 
                         clade_count_map[current_leaf_range_start_clade] += 1
+                        branch_length_map[current_leaf_range_start_clade].append(node.up.dist)
+
+                        leaf_range_end_clade = SRangesClade(
+                            frozenset({f"{node.up.range}_first"}),
+                            f"{node.up.range}_first"
+                        )
 
                         # handle the empty clade as the descendant out of the range
                         # to indicate the start of the range
@@ -189,21 +198,24 @@ def get_sranges_map(trees, taxon_map):
                                 frozenset({}),
                                 f"{node.up.range}_first"
                             ),
-                            ancestor=SRangesClade(
-                                frozenset({f"{node.up.range}_first"}),
-                                f"{node.up.range}_first"
-                            )
+                            ancestor=leaf_range_end_clade
                         )
                         clade_split_count_map[current_leaf_range_start_clade][
                             current_split] += 1
+                        # Adding the actual leaf distance too, (encoding length of range)
+                        first, second = node.up.children
+                        branch_length_map[leaf_range_end_clade].append(first.dist or second.dist)
                     else:
                         continue
                 if hasattr(node, "rangetype"):
                     if node.rangetype == "range_end":
                         if hasattr(node.up, "rangetype"):
                             if node.up.rangetype == "leaf_range":
-                                # todo might have to add these clades too?
-                                #  this would be to identify leaf ranges
+                                assert taxon_map[int(node.name)] == f"{node.range}_last", "BAD."
+                                # cur_leaf_range_start = SRangesClade(
+                                #     frozenset(f"{node.range}_first"), node.up.range
+                                # )
+                                # branch_length_map[cur_leaf_range_start].append(node.up.dist)
                                 continue
                         assert node.dist != 0.0, "If this happens we need to not allow it?!"
                         assert node.up.range == node.range, "The ranges don't match?"
@@ -211,10 +223,10 @@ def get_sranges_map(trees, taxon_map):
                                                                   "_first") ==
                                 f"{node.range}_first"), \
                             "More problems"
-                        clade_count_map[SRangesClade(
-                            frozenset({f"{node.range}_first"}),
-                            f"{node.range}_first"
-                        )] += 1
+                        cur_leaf_clade_set = frozenset({f"{node.range}_first"})
+                        cur_leaf_clade = SRangesClade(cur_leaf_clade_set, f"{node.range}_first")
+                        clade_count_map[cur_leaf_clade] += 1
+                        branch_length_map[cur_leaf_clade].append(node.dist)
                     else:
                         # ignore range_start and sampled ancestors
                         continue
@@ -238,11 +250,9 @@ def get_sranges_map(trees, taxon_map):
                                     "If this happens there might be a missing case..."
                                 )
 
-                    new_clade = SRangesClade(
-                        frozenset({taxon_map[int(node.name)]}),
-                        cur_range
-                    )
+                    new_clade = SRangesClade(frozenset({taxon_map[int(node.name)]}), cur_range)
                     clade_count_map[new_clade] += 1
+                    branch_length_map[new_clade].append(node.dist)
 
             elif hasattr(node, "rangetype"):
                 match node.rangetype:
@@ -254,8 +264,8 @@ def get_sranges_map(trees, taxon_map):
                             current_range = f"{node.up.sampledancestor}_first"
                         parent_clade_set = {
                             taxon_map[int(l.name)].replace("_last", "_first")
-                            for l
-                            in node}
+                            for l in node
+                        }
 
                         child0_clade_set = {
                             taxon_map[int(l.name)].replace("_last", "_first")
@@ -298,8 +308,8 @@ def get_sranges_map(trees, taxon_map):
                             )
 
                         clade_count_map[current_parent_clade] += 1
-                        clade_split_count_map[current_parent_clade][
-                            current_split] += 1
+                        branch_length_map[current_parent_clade].append(node.dist)
+                        clade_split_count_map[current_parent_clade][current_split] += 1
                     case "range_start":
                         current_range = None
                         # if hasattr(node.up, "range"):
@@ -337,6 +347,7 @@ def get_sranges_map(trees, taxon_map):
                             current_range
                         )
                         clade_count_map[parent_clade] += 1
+                        branch_length_map[parent_clade].append(node.dist)
                     case "range_end":
                         # Keeping just the taxon name as range for now...
                         child0_clade_set = {
@@ -431,43 +442,12 @@ def get_sranges_map(trees, taxon_map):
                         # needs to be counted
                         if parent_clade_should_be_counted:
                             clade_count_map[parent_clade] += 1
+                            branch_length_map[parent_clade].append(node.dist)
 
                         clade_split_count_map[parent_clade][current_split] += 1
                     case "leaf_range":
-                        # todo this seems to be counting leaf ranges twice with the new version
-                        #  hence it will likely be removed...
-
-                        # We are looking at a node that is parent of a range that is a leaf
-                        # We don't need to add a split here?
-                        # We only count the clade, which is the taxon and itself as a range?
-
-                        # # todo fix this to something less messy...
-                        # current_leaf = [l.name for l in node if l.dist == 0.0][
-                        #     0]
-                        # range_taxon = reverse_taxon_map[f"{node.range}_first"]
-                        #
-                        # # todo what is this assert doing?
-                        # assert range_taxon == int(current_leaf), \
-                        #     (f"Failure: {range_taxon} != {current_leaf}")
-                        #
-                        # # Leaf ranges can not have themselves as a range,
-                        # # but there can be other ranges as ancestors above
-                        # # Leaf ranges have no ancestral range of themselves because
-                        # # otherwise this information is assumed to be present above the leaf
-                        # # and therefore breaks the logic
-                        # # One way to avoid this and fully encode leaf ranges is
-                        # # to have _first and _last taxon as part of the clades...
-                        # current_range = None
-                        # if hasattr(node.up, "range"):
-                        #     current_range = f"{node.up.range}_first"
-                        # elif hasattr(node.up, "sampledancestor"):
-                        #     current_range = f"{node.up.sampledancestor}_first"
-                        # clade_count_map[
-                        #     SRangesClade(
-                        #         frozenset({taxon_map[int(current_leaf)]}),
-                        #         current_range
-                        #     )
-                        # ] += 1
+                        # Left over from previous code, removed after
+                        # commit 68d3efb6e72daeae4d0d1517ebcb2104bea8155a
                         continue
                     case _:
                         raise ValueError("Unsupported value...")
@@ -506,7 +486,8 @@ def get_sranges_map(trees, taxon_map):
                                                "sampledancestor"), "This needs fixing"
                                 parent_range = f"{node.up.sampledancestor}_first"
                             case "range_start":
-                                assert node.up.range == node.range, "something wrong with node.up.up case"
+                                assert node.up.range == node.range, \
+                                    "something wrong with node.up.up case"
                                 if hasattr(node.up.up, "range"):
                                     parent_range = f"{node.up.up.range}_first"
                                 elif hasattr(node.up.up, "sampledancestor"):
@@ -540,19 +521,22 @@ def get_sranges_map(trees, taxon_map):
                         print(f"[DEBUG]: First range birth in range, no clade count added..")
                 else:
                     clade_count_map[parent_clade] += 1
+                    branch_length_map[parent_clade].append(node.dist)
                 clade_split_count_map[parent_clade][current_split] += 1
 
     return (
         dict(clade_count_map),
         {clade: dict(splits) for clade, splits in clade_split_count_map.items()},
-        sranges_set
+        sranges_set,
+        branch_length_map
     )
 
 
 def get_sranges_map_tree(
         clade_count_map,
         clade_split_count_map,
-        sranges_set
+        sranges_set,
+        branch_length_map=None
 ):
     """Construct the stratigraphic-range CCD-MAP tree.
 
@@ -660,7 +644,8 @@ def get_sranges_map_tree(
     map_tree = get_sranges_tree_from_seen_resolved_clades(
         seen_resolved_clades,
         root,
-        sranges_set
+        sranges_set,
+        branch_length_map
     )
     #
     return seen_resolved_clades, map_tree
@@ -669,7 +654,8 @@ def get_sranges_map_tree(
 def get_sranges_tree_from_seen_resolved_clades(
         seen_resolved_clades,
         root_clade,
-        sranges_set
+        sranges_set,
+        branch_length_map
 ):
     """Construct a stratigraphic-range tree from resolved clades.
 
@@ -683,13 +669,15 @@ def get_sranges_tree_from_seen_resolved_clades(
     :param root_clade: Root clade of the stratigraphic-range CCD-MAP tree.
     :param sranges_set: Set of stratigraphic ranges identified during CCD
         construction.
+    :param branch_length_map: Mapping of clades to their branch lengths, or None
+        to use the fallback distance.
     :return: The constructed tree, including its stratigraphic-range and
         orientation annotations.
     """
     # todo ignoring tie breaking for now...
 
     out_tree = Tree(
-        dist=1.0,
+        dist=0.0,
         name="root"
     )
     if root_clade.ancestral_range in sranges_set:
@@ -697,6 +685,23 @@ def get_sranges_tree_from_seen_resolved_clades(
     out_tree.add_feature("orientation", "ancestor")
 
     icount = 1
+
+    def _get_distance(clade, fall_back=2.5, avg="mean"):
+        import statistics
+
+        if not branch_length_map:
+            return fall_back
+        match avg:
+            case "mean":
+                try:
+                    m = mean(branch_length_map[clade])
+                except statistics.StatisticsError:
+                    # todo place holder for further debugging
+                    print("well? problem...")
+                    return 2.4523
+                return m
+            case _:
+                raise NotImplementedError(f"Unsupported avg: {avg}")
 
     def recursive_sranges_children(node, split):
         """
@@ -706,7 +711,7 @@ def get_sranges_tree_from_seen_resolved_clades(
         corresponding nodes and relationships to the output tree.
         """
         nonlocal icount, seen_resolved_clades
-        nonlocal sranges_set
+        nonlocal sranges_set, branch_length_map
 
         if DEBUG_TREE:
             print(f"DEBUG: {split} is being added")
@@ -726,7 +731,10 @@ def get_sranges_tree_from_seen_resolved_clades(
             position within the split, and associated stratigraphic-range nodes.
             """
             nonlocal icount, seen_resolved_clades
-            nonlocal sranges_set
+            nonlocal sranges_set, branch_length_map
+
+            # For debugging availability
+            _get_distance
 
             def find_range_children(parent):
                 """
@@ -767,9 +775,10 @@ def get_sranges_tree_from_seen_resolved_clades(
                     case clade.ancestral_range:
                         # Parent range is same as current node:
                         # we are adding a range end node.
+                        range_end_dist = _get_distance(second_part_of_split, fall_back=1)
                         range_end_node = parent_node.add_child(
                             name=clade.ancestral_range.replace("_first", "_last"),
-                            dist=1.662 if DEBUG_TREE else 1
+                            dist=1.662 if DEBUG_TREE else range_end_dist
                         )
                         range_end_node.add_feature(
                             'orientation',
@@ -805,13 +814,15 @@ def get_sranges_tree_from_seen_resolved_clades(
 
                             range_start_parent = adjusted_parent_node.add_child(
                                 name=f"internal_leafrange",
-                                dist=7.501 if DEBUG_TREE else 1,
+                                dist=7.501 if DEBUG_TREE else
+                                (branch_length_map or {}).get(clade, 1)
                             )
                             range_start_parent.add_feature("orientation", orientation)
 
                             range_start_leaf = range_start_parent.add_child(
                                 name=label,
-                                dist=0.157 if DEBUG_TREE else 0,
+                                dist=0.157 if DEBUG_TREE else
+                                (branch_length_map or {}).get(clade, 0),
                             )
                             range_start_leaf.add_feature("orientation", "descendant")
 
@@ -837,10 +848,10 @@ def get_sranges_tree_from_seen_resolved_clades(
 
                         if label in sranges_set:
                             # have to add a leaf range
-
+                            range_start_parent_dist = _get_distance(clade, fall_back=1)
                             range_start_parent = adjusted_parent_node.add_child(
                                 name=f"internal_leafrange",
-                                dist=1.733 if DEBUG_TREE else 1,
+                                dist=1.733 if DEBUG_TREE else range_start_parent_dist,
                             )
                             range_start_parent.add_feature("orientation", orientation)
 
@@ -850,28 +861,31 @@ def get_sranges_tree_from_seen_resolved_clades(
                             )
                             range_start_leaf.add_feature("orientation", "descendant")
 
+                            range_end_leaf_dist = _get_distance(
+                                SRangesClade(frozenset({label}), label), fall_back=1
+                            )
                             leaf = range_start_parent.add_child(
                                 name=label.replace("_first", "_last"),
-                                dist=1.34 if DEBUG_TREE else 1,
+                                dist=1.34 if DEBUG_TREE else range_end_leaf_dist,
                             )
                             leaf.add_feature("orientation", "ancestor")
                             leaf.add_feature("ancestral_range", label)
 
                         else:
-
+                            leaf_dist = _get_distance(clade, fall_back=1)
                             leaf = adjusted_parent_node.add_child(
                                 name=label,
-                                dist=1.754 if DEBUG_TREE else 1,
+                                dist=1.754 if DEBUG_TREE else leaf_dist,
                             )
                             leaf.add_feature("orientation", orientation)
                     else:
 
                         if label in sranges_set:
                             # have to add a leaf range
-
+                            range_start_dist = _get_distance(clade, fall_back=1)
                             range_start_parent = parent_node.add_child(
                                 name=f"internal_leafrange",
-                                dist=1.764 if DEBUG_TREE else 1,
+                                dist=1.764 if DEBUG_TREE else range_start_dist,
                             )
                             range_start_parent.add_feature("orientation", orientation)
 
@@ -881,17 +895,22 @@ def get_sranges_tree_from_seen_resolved_clades(
                             )
                             range_start_leaf.add_feature("orientation", "descendant")
 
+                            range_end_dist = _get_distance(
+                                SRangesClade(clade.clade, next(iter(clade.clade))),
+                                fall_back=1
+                            )
                             leaf = range_start_parent.add_child(
                                 name=label.replace("_first", "_last"),
-                                dist=1.12 if DEBUG_TREE else 1,
+                                dist=1.12 if DEBUG_TREE else range_end_dist,
                             )
                             leaf.add_feature("orientation", "ancestor")
                             leaf.add_feature("ancestral_range", label)
 
                         else:
+                            leaf_dist = _get_distance(clade, fall_back=1)
                             leaf = parent_node.add_child(
                                 name=label,
-                                dist=1.784 if DEBUG_TREE else 1,
+                                dist=1.784 if DEBUG_TREE else leaf_dist,
                             )
                             leaf.add_feature("orientation", "descendant")
 
@@ -906,14 +925,17 @@ def get_sranges_tree_from_seen_resolved_clades(
                         # if clade.ancestral_range in sampled_ancestors:
                         if clade.ancestral_range not in sranges_set:
                             # this means the range is a SA
+
+                            # todo this somehow uses a clade, that was never counted?
+                            #  figure out how to reconcile with the branch lenghts...
+                            # sa_parent_dist = _get_distance(clade, fall_back=1)
+                            sa_parent_dist = 2.32
+
                             sa_parent = parent_node.add_child(
                                 name=f"internal_{icount}",
-                                dist=1.8 if DEBUG_TREE else 1,
+                                dist=1.8 if DEBUG_TREE else sa_parent_dist,
                             )
-                            sa_parent.add_feature(
-                                "orientation",
-                                orientation
-                            )
+                            sa_parent.add_feature("orientation", orientation)
                             sa_leaf = sa_parent.add_child(
                                 name=clade.ancestral_range,
                                 dist=1.808 if DEBUG_TREE else 0,
@@ -923,9 +945,12 @@ def get_sranges_tree_from_seen_resolved_clades(
                             if label in sranges_set:
                                 # have to add a leaf range
 
+                                # todo this also failing with another SA case...
+                                #  the SAs in the branch_length_map are not done properly...
+                                leaf_range_start_dist = _get_distance(clade, fall_back=1)
                                 range_start_parent = sa_parent.add_child(
                                     name=f"internal_leafrange",
-                                    dist=1.90 if DEBUG_TREE else 1,
+                                    dist=1.90 if DEBUG_TREE else leaf_range_start_dist,
                                 )
                                 range_start_parent.add_feature("orientation", orientation)
 
@@ -935,9 +960,13 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 )
                                 range_start_leaf.add_feature("orientation", "descendant")
 
+                                leaf_range_end_leaf_dist = _get_distance(
+                                    SRangesClade(clade.clade, next(iter(clade.clade))),
+                                    fall_back=1
+                                )
                                 leaf = range_start_parent.add_child(
                                     name=label.replace("_first", "_last"),
-                                    dist=1.986 if DEBUG_TREE else 1,
+                                    dist=1.986 if DEBUG_TREE else leaf_range_end_leaf_dist,
                                 )
                                 leaf.add_feature("orientation", "ancestor")
                                 leaf.add_feature("ancestral_range", label)
