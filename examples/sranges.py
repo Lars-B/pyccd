@@ -38,9 +38,9 @@ clade_counts, clade_split_counts, sranges_set, branch_length_map = sranges.get_s
     trees, taxon_map
 )
 
-for k in clade_counts:
-    if k not in branch_length_map:
-        print(k)
+# for k in clade_counts:
+#     if k not in branch_length_map:
+#         print(k)
 
 reverse_taxon_map = {value: key for key, value in taxon_map.items()}
 seen_resolved, map_tree = sranges.get_sranges_map_tree(
