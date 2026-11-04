@@ -285,27 +285,31 @@ def get_sranges_map(trees, taxon_map):
                         )
 
                         if node.children[0].dist == 0.0:
+                            cur_sa_clade = SRangesClade(
+                                frozenset(child1_clade_set),
+                                taxon_map[int(node.children[0].name)]
+                            )
                             current_split = AncestralSplit(
                                 ancestor=SRangesClade(
                                     frozenset({}),
                                     taxon_map[int(node.children[0].name)]
                                 ),
-                                descendant=SRangesClade(
-                                    frozenset(child1_clade_set),
-                                    taxon_map[int(node.children[0].name)]
-                                )
+                                descendant=cur_sa_clade
                             )
+                            branch_length_map[cur_sa_clade].append(node.children[1].dist)
                         elif node.children[1].dist == 0.0:
+                            cur_sa_clade = SRangesClade(
+                                frozenset(child0_clade_set),
+                                taxon_map[int(node.children[1].name)]
+                            )
                             current_split = AncestralSplit(
                                 ancestor=SRangesClade(
                                     frozenset({}),
                                     taxon_map[int(node.children[1].name)]
                                 ),
-                                descendant=SRangesClade(
-                                    frozenset(child0_clade_set),
-                                    taxon_map[int(node.children[1].name)]
-                                )
+                                descendant=cur_sa_clade
                             )
+                            branch_length_map[cur_sa_clade].append(node.children[0].dist)
 
                         clade_count_map[current_parent_clade] += 1
                         branch_length_map[current_parent_clade].append(node.dist)
@@ -693,13 +697,7 @@ def get_sranges_tree_from_seen_resolved_clades(
             return fall_back
         match avg:
             case "mean":
-                try:
-                    m = mean(branch_length_map[clade])
-                except statistics.StatisticsError:
-                    # todo place holder for further debugging
-                    print("well? problem...")
-                    return 2.4523
-                return m
+                return mean(branch_length_map[clade])
             case _:
                 raise NotImplementedError(f"Unsupported avg: {avg}")
 
