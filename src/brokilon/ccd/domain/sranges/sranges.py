@@ -344,9 +344,9 @@ def get_sranges_map(trees, taxon_map):
 
                         parent_clade = SRangesClade(
                             frozenset(
-                                {taxon_map[int(l.name)].replace("_last",
-                                                                "_first") for l
-                                 in node}
+                                {
+                                    taxon_map[int(l.name)].replace("_last", "_first") for l in node
+                                }
                             ),
                             current_range
                         )
@@ -526,6 +526,15 @@ def get_sranges_map(trees, taxon_map):
                 else:
                     clade_count_map[parent_clade] += 1
                     branch_length_map[parent_clade].append(node.dist)
+
+                # The range births will suppress the internal clade that is present between the
+                # start of the range and the first range birth
+                # to recover the branch length we need to specifically make this clade and store
+                # the required length of it, for building the tree or counting clades
+                # it is no necessary
+                intermediate_range_clade = SRangesClade(parent_clade.clade, cur_range)
+                branch_length_map[intermediate_range_clade].append(node.dist)
+
                 clade_split_count_map[parent_clade][current_split] += 1
 
     return (
@@ -694,7 +703,6 @@ def get_sranges_tree_from_seen_resolved_clades(
     icount = 1
 
     def _get_distance(clade, fall_back=2.5, avg="mean"):
-        import statistics
 
         if not branch_length_map:
             return fall_back
@@ -1133,11 +1141,20 @@ def get_sranges_tree_from_seen_resolved_clades(
                         )
                         start_range_leaf.add_feature('orientation', "ancestor")
 
+                        # This node corresponds to a clade that is supressed/ implied by the split
+                        # therefore it is not anywhere else, but we need to make it to recover
+                        # the branch lengths
+                        intermediate_clade = SRangesClade(
+                            clade=clade.clade.union(second_part_of_split.clade),
+                            ancestral_range=clade.ancestral_range
+                        )
+                        intermediate_node_dist = _get_distance(intermediate_clade, fall_back=1)
+
                         # SRangesClade(clade.clade.union(second_part_of_split.clade), clade.ancestral_range)
                         # should be the parent clade and its length should be in branch lengths...
                         extra_internal_node = start_range_parent.add_child(
                             name=f"internal_extra_{icount}",
-                            dist=3 if DEBUG_TREE else 11,
+                            dist=3 if DEBUG_TREE else intermediate_node_dist,
                         )
                         if hasattr(clade, 'ancestral_range'):
                             extra_internal_node.add_feature(
