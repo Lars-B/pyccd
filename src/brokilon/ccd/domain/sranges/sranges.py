@@ -260,12 +260,32 @@ def get_sranges_map(trees, taxon_map):
                         current_range = None
                         if hasattr(node.up, "range"):
                             current_range = f"{node.up.range}_first"
+                            if hasattr(node.up, "rangetype"):
+                                # if this is not 'range_end' it could be SA,
+                                # need to figure out that case if i find it
+                                assert node.up.rangetype == "range_end", \
+                                    "Should be end, otherwise tree malformed?"
+                                # We need to track this suppressed clades branch length
+                                # its only implicit in the clade/clade split structure
+                                suppressed_clade = SRangesClade(
+                                    frozenset(
+                                        {
+                                            taxon_map[int(l.name)].replace("_last", "_first")
+                                            for l in node.up
+                                        }),
+                                    ancestral_range=f"{node.up.range}_first"
+                                )
+                                branch_length_map[suppressed_clade].append(node.up.dist)
                         elif hasattr(node.up, "sampledancestor"):
                             current_range = f"{node.up.sampledancestor}_first"
                         parent_clade_set = {
                             taxon_map[int(l.name)].replace("_last", "_first")
                             for l in node
                         }
+                        current_parent_clade = SRangesClade(
+                            frozenset(parent_clade_set),
+                            current_range
+                        )
 
                         child0_clade_set = {
                             taxon_map[int(l.name)].replace("_last", "_first")
@@ -278,11 +298,6 @@ def get_sranges_map(trees, taxon_map):
 
                         assert parent_clade_set == child0_clade_set.union(
                             child1_clade_set)
-
-                        current_parent_clade = SRangesClade(
-                            frozenset(parent_clade_set),
-                            current_range
-                        )
 
                         if node.children[0].dist == 0.0:
                             cur_sa_clade = SRangesClade(
@@ -645,9 +660,6 @@ def get_sranges_map_tree(
         seen_resolved_clades[root][0] for root in all_root_clades)
     best_roots = [root for root in all_root_clades
                   if seen_resolved_clades[root][0] == max_root_prob]
-
-    # todo problem is that root distance is not in there, i think that the branch length map
-    #  is off set by 1 at the moment, mismatch between .dist being on top and clade being below...
 
     if len(best_roots) > 1:
         raise NotImplementedError(
@@ -1085,9 +1097,10 @@ def get_sranges_tree_from_seen_resolved_clades(
                 else:
                     if label in sranges_set and clade.ancestral_range != label:
 
+                        start_range_dist = _get_distance(clade, fall_back=1)
                         start_range_parent = parent_node.add_child(
                             name=f"internal_{icount}",
-                            dist=1.023 if DEBUG_TREE else 1,
+                            dist=1.023 if DEBUG_TREE else start_range_dist,
                         )
                         start_range_parent.add_feature("orientation", "descendant")
 
@@ -1097,9 +1110,13 @@ def get_sranges_tree_from_seen_resolved_clades(
                         )
                         range_start_leaf.add_feature('orientation', "descendant")
 
+                        leaf_range_end_clade = SRangesClade(
+                            clade=frozenset({label}), ancestral_range=label
+                        )
+                        leaf_range_end_dist = _get_distance(leaf_range_end_clade, fall_back=1)
                         leaf_range_end = start_range_parent.add_child(
                             name=label.replace('_first', '_last'),
-                            dist=4.24 if DEBUG_TREE else 1,
+                            dist=4.24 if DEBUG_TREE else leaf_range_end_dist,
                         )
                         leaf_range_end.add_feature("orientation", "ancestor")
                         leaf_range_end.add_feature("ancestral_range", label)
@@ -1192,9 +1209,19 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 "descendant"
                             )
 
+                            internal_clade = SRangesClade(
+                                clade.clade.union({clade.ancestral_range}), clade.ancestral_range
+                            )
+
+                            try:
+                                internal_clade_dist = _get_distance(internal_clade, fall_back=1)
+                            except Exception as e:
+                                print("further debuggin required, "
+                                      "likely another case of suppressed clade")
+
                             internal_range_end_parent = parent_node.add_child(
                                 name=f"internal_extra_{icount}",
-                                dist=2.443 if DEBUG_TREE else 11
+                                dist=2.443 if DEBUG_TREE else internal_clade_dist
                             )
 
                             internal_range_end_parent.add_feature(
