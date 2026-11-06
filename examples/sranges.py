@@ -9,7 +9,7 @@ from pathlib import Path
 #                   f"/examples/data/sranges_toy_posterior.trees")
 
 test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
-                  f"/examples/data/srfbd_last_20.trees")
+                  f"/examples/data/srfbd_last.trees")
 
 # test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
 #                   f"/examples/data/rep_3_srfbd_first_ucln.trees")
@@ -19,7 +19,8 @@ test_tree_file = (f"{Path(__file__).parent.absolute().parent}"
 
 from brokilon.core import read_nexus_trees
 
-trees, taxon_map = read_nexus_trees(test_tree_file, parse_taxon_map=True, burn_in=0.0)
+trees_raw, taxon_map = read_nexus_trees(test_tree_file, parse_taxon_map=True, burn_in=0.0)
+# trees = trees_raw[0:30]
 
 # subset for debugging
 # single range birth
@@ -27,20 +28,34 @@ trees, taxon_map = read_nexus_trees(test_tree_file, parse_taxon_map=True, burn_i
 # stacked ranges case
 # trees = trees[26:27]
 
-# trees = trees[:4]
+from brokilon.ccd.domain.sranges.pruning_outlier_trees import prune_outlier_trees
+pruned_trees = prune_outlier_trees(trees_raw, taxon_map)
 
-print(f"Looking at {len(trees)} trees.")
+print(f"Looking at {len(pruned_trees)} trees.")
 from brokilon.ccd.domain.sranges import sranges
+
+# import sys
+# sys.exit("Temporary stop...")
 
 # todo this can only be called once, the prelabel thing needs to be done better
 #  i need to refactor that code properly...
 clade_counts, clade_split_counts, sranges_set, branch_length_map = sranges.get_sranges_map(
-    trees, taxon_map
+    pruned_trees, taxon_map
 )
 
+# todo double counting issues might still exist
 # for k in clade_counts:
 #     if k not in branch_length_map:
 #         print(k)
+#     if clade_counts[k] != 1:
+#         print(k)
+#         raise ValueError("Problem with double counting also in clades....")
+
+# double_counted = [k for k in branch_length_map.values() if len(k) > 1]
+# if len(double_counted) > 0:
+#     print(double_counted)
+#     raise ValueError("double counting branch lengths...")
+
 
 reverse_taxon_map = {value: key for key, value in taxon_map.items()}
 seen_resolved, map_tree = sranges.get_sranges_map_tree(
