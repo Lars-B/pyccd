@@ -420,6 +420,15 @@ def get_sranges_map(trees, taxon_map):
                             raise AssertionError(
                                 f"Failure: range end should have "
                                 f"single taxon leaf set which is the range...")
+
+                        # suppressed clade here, descendant is end of range,
+                        # the clade right above the range is not counted and only implied
+                        suppressed_clade = SRangesClade(
+                            current_split.ancestor.clade.union({f"{node.range}_first"}),
+                            f"{node.range}_first"
+                        )
+                        branch_length_map[suppressed_clade].append(node.dist)
+
                         parent_range = None
                         parent_clade_should_be_counted = True
                         if node.up:
@@ -1213,11 +1222,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 clade.clade.union({clade.ancestral_range}), clade.ancestral_range
                             )
 
-                            try:
-                                internal_clade_dist = _get_distance(internal_clade, fall_back=1)
-                            except Exception as e:
-                                print("further debuggin required, "
-                                      "likely another case of suppressed clade")
+                            internal_clade_dist = _get_distance(internal_clade, fall_back=1)
 
                             internal_range_end_parent = parent_node.add_child(
                                 name=f"internal_extra_{icount}",
