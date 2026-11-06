@@ -58,7 +58,8 @@ def main(trees_file, ccd_type, burn_in, output_file, verbose, debug):
     seen_resolved, map_tree = sranges.get_sranges_map_tree(
         clade_counts,
         clade_split_counts,
-        sranges_set
+        sranges_set,
+        branch_length_map
     )
 
     nwk_map = map_tree.write(
