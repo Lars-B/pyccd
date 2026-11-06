@@ -377,7 +377,6 @@ def get_sranges_map(trees, taxon_map):
                         )
                         clade_count_map[parent_clade] += 1
                         branch_length_map[parent_clade].append(node.dist)
-                        # print(f"Adding this dist: {node.dist}")
                     case "range_end":
                         # Keeping just the taxon name as range for now...
                         child0_clade_set = {
@@ -970,14 +969,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                         if clade.ancestral_range not in sranges_set:
                             # this means the range is a SA
 
-                            sa_parent_dist = _get_distance(clade, fall_back=1)
-
-                            sa_parent = parent_node.add_child(
-                                name=f"internal_{icount}",
-                                dist=1.8 if DEBUG_TREE else sa_parent_dist,
-                            )
-                            sa_parent.add_feature("orientation", orientation)
-                            sa_leaf = sa_parent.add_child(
+                            sa_leaf = parent_node.add_child(
                                 name=clade.ancestral_range,
                                 dist=1.808 if DEBUG_TREE else 0,
                             )
@@ -986,7 +978,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                             if label in sranges_set:
                                 # have to add a leaf range
                                 leaf_range_start_dist = _get_distance(clade, fall_back=1)
-                                range_start_parent = sa_parent.add_child(
+                                range_start_parent = parent_node.add_child(
                                     name=f"internal_leafrange",
                                     dist=1.90 if DEBUG_TREE else leaf_range_start_dist,
                                 )
@@ -1011,7 +1003,7 @@ def get_sranges_tree_from_seen_resolved_clades(
 
                             else:
                                 leaf_dist = _get_distance(clade, fall_back=1)
-                                leaf = sa_parent.add_child(
+                                leaf = parent_node.add_child(
                                     name=label,
                                     dist=1.987 if DEBUG_TREE else leaf_dist,
                                 )
@@ -1183,9 +1175,10 @@ def get_sranges_tree_from_seen_resolved_clades(
                         clade.ancestral_range != getattr(parent_node, 'ancestral_range', None)
                 ):
                     if clade.ancestral_range in clade.clade:
+
                         start_range_parent = parent_node.add_child(
                             name=f"internal_{icount}",
-                            dist=6 if DEBUG_TREE else 0,
+                            dist=6 if DEBUG_TREE else 11,
                         )
                         start_range_parent.add_feature(
                             'orientation',
@@ -1273,8 +1266,7 @@ def get_sranges_tree_from_seen_resolved_clades(
                                 dist=2.443 if DEBUG_TREE else 0,
                             )
                             range_end_node.add_feature('orientation', "ancestor")
-
-                            range_end_node.ancestral_range = (clade.ancestral_range)
+                            range_end_node.ancestral_range = clade.ancestral_range
 
                             post_range_dist = _get_distance(clade, fall_back=1)
                             internal_node = internal_range_end_parent.add_child(
@@ -1351,5 +1343,28 @@ def get_sranges_tree_from_seen_resolved_clades(
         out_tree,
         seen_resolved_clades[root_clade][1]
     )
+    pruned_out = _prune_sranges_edges(out_tree)
+    return pruned_out
+    # return pruned_out
 
-    return out_tree
+
+def _prune_sranges_edges(tree):
+    root = tree
+    for node in list(tree.traverse("postorder")):
+        if len(node.children) != 1:
+            continue
+        child = node.children[0]
+        assert child.dist == 11, "Something wrong with redundant node..."
+        child.dist = node.dist  # keep the node's edge, drop the redundant one
+        parent = node.up
+        if parent is None:
+            child.up = None
+            root = child
+        else:
+            i = parent.children.index(node)
+            parent.children[i] = child
+            child.up = parent
+
+        node.children = []
+        node.up = None
+    return root
