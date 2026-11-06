@@ -265,17 +265,19 @@ def get_sranges_map(trees, taxon_map):
                                 # need to figure out that case if i find it
                                 assert node.up.rangetype == "range_end", \
                                     "Should be end, otherwise tree malformed?"
+
+                                # todo this seems to be redundant now:
                                 # We need to track this suppressed clades branch length
                                 # its only implicit in the clade/clade split structure
-                                suppressed_clade = SRangesClade(
-                                    frozenset(
-                                        {
-                                            taxon_map[int(l.name)].replace("_last", "_first")
-                                            for l in node.up
-                                        }),
-                                    ancestral_range=f"{node.up.range}_first"
-                                )
-                                branch_length_map[suppressed_clade].append(node.up.dist)
+                                # suppressed_clade = SRangesClade(
+                                #     frozenset(
+                                #         {
+                                #             taxon_map[int(l.name)].replace("_last", "_first")
+                                #             for l in node.up
+                                #         }),
+                                #     ancestral_range=f"{node.up.range}_first"
+                                # )
+                                # branch_length_map[suppressed_clade].append(node.up.dist)
                         elif hasattr(node.up, "sampledancestor"):
                             current_range = f"{node.up.sampledancestor}_first"
                         parent_clade_set = {
@@ -311,7 +313,11 @@ def get_sranges_map(trees, taxon_map):
                                 ),
                                 descendant=cur_sa_clade
                             )
-                            branch_length_map[cur_sa_clade].append(node.children[1].dist)
+                            # These cases are only necessarry if there is a leafrange below
+                            # otherwise these distances are counted already
+                            if (len(child1_clade_set) == 1
+                                    and hasattr(node.children[1], "rangetype")):
+                                branch_length_map[cur_sa_clade].append(node.children[1].dist)
                         elif node.children[1].dist == 0.0:
                             cur_sa_clade = SRangesClade(
                                 frozenset(child0_clade_set),
@@ -324,7 +330,11 @@ def get_sranges_map(trees, taxon_map):
                                 ),
                                 descendant=cur_sa_clade
                             )
-                            branch_length_map[cur_sa_clade].append(node.children[0].dist)
+                            # These cases are only necessarry if there is a leafrange below
+                            # otherwise these distances are counted already
+                            if (len(child0_clade_set) == 1
+                                    and hasattr(node.children[0], "rangetype")):
+                                branch_length_map[cur_sa_clade].append(node.children[0].dist)
 
                         clade_count_map[current_parent_clade] += 1
                         branch_length_map[current_parent_clade].append(node.dist)
@@ -367,6 +377,7 @@ def get_sranges_map(trees, taxon_map):
                         )
                         clade_count_map[parent_clade] += 1
                         branch_length_map[parent_clade].append(node.dist)
+                        # print(f"Adding this dist: {node.dist}")
                     case "range_end":
                         # Keeping just the taxon name as range for now...
                         child0_clade_set = {
@@ -421,14 +432,6 @@ def get_sranges_map(trees, taxon_map):
                                 f"Failure: range end should have "
                                 f"single taxon leaf set which is the range...")
 
-                        # suppressed clade here, descendant is end of range,
-                        # the clade right above the range is not counted and only implied
-                        suppressed_clade = SRangesClade(
-                            current_split.ancestor.clade.union({f"{node.range}_first"}),
-                            f"{node.range}_first"
-                        )
-                        branch_length_map[suppressed_clade].append(node.dist)
-
                         parent_range = None
                         parent_clade_should_be_counted = True
                         if node.up:
@@ -470,7 +473,14 @@ def get_sranges_map(trees, taxon_map):
                         # needs to be counted
                         if parent_clade_should_be_counted:
                             clade_count_map[parent_clade] += 1
-                            branch_length_map[parent_clade].append(node.dist)
+
+                        # suppressed clade here, descendant is end of range,
+                        # the clade right above the range is not counted and only implied
+                        suppressed_clade = SRangesClade(
+                            current_split.ancestor.clade.union({f"{node.range}_first"}),
+                            f"{node.range}_first"
+                        )
+                        branch_length_map[suppressed_clade].append(node.dist)
 
                         clade_split_count_map[parent_clade][current_split] += 1
                     case "leaf_range":
@@ -545,19 +555,20 @@ def get_sranges_map(trees, taxon_map):
                 if range_birth and getattr(node.up, "rangetype", "nothing") == "range_start":
                     # this parent clade was already added with the start range and does not
                     # need to be counted again (double count issue)
+
+                    # The range births will suppress the internal clade that is present between the
+                    # start of the range and the first range birth
+                    # to recover the branch length we need to specifically make this clade and store
+                    # the required length of it, for building the tree or counting clades
+                    # it is no necessary
+                    intermediate_range_clade = SRangesClade(parent_clade.clade, cur_range)
+                    branch_length_map[intermediate_range_clade].append(node.dist)
+
                     if DEBUG_TREE:
                         print(f"[DEBUG]: First range birth in range, no clade count added..")
                 else:
                     clade_count_map[parent_clade] += 1
                     branch_length_map[parent_clade].append(node.dist)
-
-                # The range births will suppress the internal clade that is present between the
-                # start of the range and the first range birth
-                # to recover the branch length we need to specifically make this clade and store
-                # the required length of it, for building the tree or counting clades
-                # it is no necessary
-                intermediate_range_clade = SRangesClade(parent_clade.clade, cur_range)
-                branch_length_map[intermediate_range_clade].append(node.dist)
 
                 clade_split_count_map[parent_clade][current_split] += 1
 
